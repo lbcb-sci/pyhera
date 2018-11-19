@@ -53,6 +53,23 @@ Typical Ezra run command:
 
     ezra folder > output.fasta
 
-## Running PyHera
-PyHera is run by running pyhera.py script
+### Running PyHera
+PyHera is run by running `<pyhera.py>` script, from the root folder of the repository. PyHera can be run with several options and various arguments, which are printed to the screen when running the script without arguments.
+
+A typical command to run PyHera for scaffolding:
+    
+    python pyhera.py scaffold contigs.fasta reads.fastq readsToContigs.paf readsToReads.paf -o output.fasta
+
+Aside from overlaps between reads and contigs, PyHera also requires overlaps between reads and reads (self-overlaps).
+
+### Running Scaffolding script
+Scaffolding script combines Ezra and PyHera and is run using `<scaffold.py>` script from the root folder of the repository.
+
+A typical command to run the scaffolding script:
+
+    python scaffold.py contigs.fasta reads.fastq --results results_folder --plan P1E3
+
+The script will combine Ezra and PyHera according to a given scaffolding plan. A scaffolding plan is a series of letter-number pairs, where letter defines the scaffolder and the number defines the number of iterations for that scaffolder. The scaffolding script will run Minimap2 to calcualte needed overlaps and will generate a separate folder for each iteration of scffolding. The final result will be in the folder relating to the last iteration.
+
+If the scffolding plan is not specified, the default plan will be used. The default plan is P1E3 - run PyHera once and Ezra three times. Ezra usually gives better results after a few iterations so we suggest running Ezra at least three times.
 

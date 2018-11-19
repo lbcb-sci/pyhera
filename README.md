@@ -14,7 +14,7 @@ Ezra is a result of a graduation thesis work done by Ivan Krpelnik on University
 Ezra is included as a submodule, with main repository at: https://gitlab.com/Krpa/ezra.
 
 ### Scaffolding script
-Scaffolding script combines PYHera and Ezra, according to a given scaffolding plan, to iteratively perform the scaffolding, using output of the previous iteration as input for the next one. THe script will use Minimap2 to produce overlaps needed for the scaffolding.
+Scaffolding script combines PYHera and Ezra, according to a given scaffolding plan, to iteratively perform the scaffolding, using output of the previous iteration as input for the next one. The script will use Minimap2 to produce overlaps needed for the scaffolding.
 
 ## Installation
 
@@ -37,11 +37,22 @@ Scaffolding script combines PYHera and Ezra, according to a given scaffolding pl
     cd Minimap2
     make
 
-  Pythons scripts, such as PyHery, Scaffolder script and samscripts tool do not need to be installed.
+  Pythons scripts, such as PyHera, Scaffolder script and samscripts tool do not need to be installed.
 
 ### Dependencies
 Python scripts require PYthon2.7. Ezra requires CMake 3.5.
 
 ## Running the scripts
+### Running Ezra
+After building, Ezra executable will be created in `<Ezra/build>` folder. Ezra receives a single folder as an argument and outputs scaffolds to the standard output. The folder must contain the following files:
+- reads.fastq - file with read sequences, must be in FASTQ format
+- contigs.fasta - file with contig sequences
+- readsToContigs.paf - file with overlaps between reads and contigs, when calculating overlaps, contigs must be used as reference
 
+Typical Ezra run command:
+
+    ezra folder > output.fasta
+
+## Running PyHera
+PyHera is run by running pyhera.py script
 

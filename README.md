@@ -5,11 +5,12 @@ The  tools are currently under development and any feedback on them is very welc
 
 ## Tools
 ### PyHera
-PyHera is a python implementation of HERA scaffolder.
+PyHera is a python implementation of HERA scaffolder. HERA uses overlaps between contigs and reads and also self-overalps between reads to generate a graph. It then generates numerous paths between contigs, groups them according to their length and choses the best representative path.
 The paper on the HERA is available at bioRchiv: https://www.biorxiv.org/content/early/2018/06/13/345983.
 
 ### Ezra
-Ezra is a result of a graduation thesis work done by Ivan Krpelnik on University of Zareb Faculty of Electrical Engineering and Computing. This thesis is available here: http://complex.zesoi.fer.hr/data/pdf/Ivan_Krpelnik_diplomski.pdf.
+Ezra is a result of a graduation thesis work done by Ivan Krpelnik on University of Zareb Faculty of Electrical Engineering and Computing. Ezra uses MSA (Multiple Sequence Alignment) to extend contigs on each end and is also able to connect two contigs using long reads that overlap with both of them. To make the best use of the extension step, Ezra should be run in several iterations.
+This thesis is available here: http://complex.zesoi.fer.hr/data/pdf/Ivan_Krpelnik_diplomski.pdf.
 
 Ezra is included as a submodule, with main repository at: https://gitlab.com/Krpa/ezra.
 
@@ -71,5 +72,8 @@ A typical command to run the scaffolding script:
 
 The script will combine Ezra and PyHera according to a given scaffolding plan. A scaffolding plan is a series of letter-number pairs, where letter defines the scaffolder and the number defines the number of iterations for that scaffolder. The scaffolding script will run Minimap2 to calcualte needed overlaps and will generate a separate folder for each iteration of scffolding. The final result will be in the folder relating to the last iteration.
 
-If the scffolding plan is not specified, the default plan will be used. The default plan is P1E3 - run PyHera once and Ezra three times. Ezra usually gives better results after a few iterations so we suggest running Ezra at least three times.
+If the scffolding plan is not specified, the default plan will be used. The default plan is E3P1 - run Ezra three times and then PyHera once. Ezra usually gives better results after a few iterations so we suggest running Ezra at least three times.
+
+## Testing
+Scaffolding script was tested on several Salmonella Enterica datasets.
 

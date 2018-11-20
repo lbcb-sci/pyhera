@@ -81,10 +81,15 @@ In general, all plans resulted in the improvement of the assembly, but the final
 
 ### Example
 On one dataset Rala produced highly fragmented assembly containing 18 contigs. Gepard image is given below:
-![Rala contigs](https://github.com/lbcb-sci/pyhera/blob/master/images/NCTC10384_rala_dotplot.jpeg|width=400)
 
-![Scaffolding with plan P1E3](https://github.com/lbcb-sci/pyhera/blob/master/images/NCTC10384_P1E3_dotplot.jpeg)
+<img src=images/NCTC10384_rala_dotplot.jpeg width="400">
 
-![Scaffolding with plan E3P1](https://github.com/lbcb-sci/pyhera/blob/master/images/NCTC10384_E3P1_dotplot.jpeg)
+Running scafolder script with the plan P1E3 reduces this to 7 sequences:
 
+<img src=images/NCTC10384_P1E3_dotplot.jpeg width="400">
 
+While running scafolder script with the plan E3P1 reduces this to 5 sequences:
+
+<img src=images/NCTC10384_E3P1_dotplot.jpeg width="400">
+
+The final results is not a perfect assembly, but represents a significant improvement compared to initial contigs. 

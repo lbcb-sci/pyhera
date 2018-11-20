@@ -75,5 +75,16 @@ The script will combine Ezra and PyHera according to a given scaffolding plan. A
 If the scffolding plan is not specified, the default plan will be used. The default plan is E3P1 - run Ezra three times and then PyHera once. Ezra usually gives better results after a few iterations so we suggest running Ezra at least three times.
 
 ## Testing
-Scaffolding script was tested on several Salmonella Enterica datasets.
+Scaffolding script was tested on several Salmonella Enterica datasets. [Minimap2](https://github.com/lh3/minimap2) was used to generate overalps. Initial assembly was done using [Rala](https://github.com/rvaser/rala). Obtained contigs were then scaffolded using scaffolding script and several different scaffolding plans. Finally scaffolds were compared to the reference using [gepard tool](http://cube.univie.ac.at/gepard).
+
+In general, all plans resulted in the improvement of the assembly, but the final quality heavily depended on the plan.
+
+### Example
+
+![Rala contigs](https://github.com/lbcb-sci/pyhera/blob/master/images/NCTC10384_rala_dotplot.jpeg)
+
+![Scaffolding with plan P1E3](https://github.com/lbcb-sci/pyhera/blob/master/images/NCTC10384_P1E3_dotplot.jpeg)
+
+![Scaffolding with plan E3P1](https://github.com/lbcb-sci/pyhera/blob/master/images/NCTC10384_E3P1_dotplot.jpeg)
+
 

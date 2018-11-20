@@ -80,8 +80,8 @@ Scaffolding script was tested on several Salmonella Enterica datasets. [Minimap2
 In general, all plans resulted in the improvement of the assembly, but the final quality heavily depended on the plan.
 
 ### Example
-
-![Rala contigs](https://github.com/lbcb-sci/pyhera/blob/master/images/NCTC10384_rala_dotplot.jpeg)
+On one dataset Rala produced highly fragmented assembly containing 18 contigs. Gepard image is given below:
+![Rala contigs](https://github.com/lbcb-sci/pyhera/blob/master/images/NCTC10384_rala_dotplot.jpeg|width=400)
 
 ![Scaffolding with plan P1E3](https://github.com/lbcb-sci/pyhera/blob/master/images/NCTC10384_P1E3_dotplot.jpeg)
 

@@ -20,17 +20,17 @@ paramdefs = {'--version' : 0,
              '--EOptions' : 1,
              '--POptions' : 1}
 
-# A default scaffolding plan, run Pyhera once and then Ezra three times
+# A default scaffolding plan, run ScaRa once and then Ezra three times
 default_plan = 'P1E3'
 
-# Placeholders for default options for running PyHera and Ezra
+# Placeholders for default options for running ScaRa and Ezra
 default_PHoptions = ''
 default_Eoptions = ''
 default_MM2options = '-t 12 -x ava-pb --dual=yes'
 
-# Setting run names for Pyhera, Ezra, Minimap2 and Python
+# Setting run names for ScaRa, Ezra, Minimap2 and Python
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
-PYHERA = os.path.join(SCRIPT_PATH, 'pyhera.py')
+SCARA = os.path.join(SCRIPT_PATH, 'SCARA.py')
 MINIMAP2 = os.path.join(SCRIPT_PATH, 'minimap2', 'minimap2')
 EZRA = os.path.join(SCRIPT_PATH, 'ezra', 'build', 'ezra')
 PYTHON = 'python'
@@ -41,12 +41,12 @@ def print_version():
 
 
 def check_tools():
-	global SCRIPT_PATH, PYHERA, MINIMAP2, EZRA, PYTHON
+	global SCRIPT_PATH, SCARA, MINIMAP2, EZRA, PYTHON
 	if not os.path.exists(SCRIPT_PATH):
 		sys.stderr.write('\nChecking tools: folder %s does not exist!\n' % SCRIPT_PATH)
 		return False
-	elif not os.path.exists(PYHERA):
-		sys.stderr.write('\nChecking tools: Pyhera script (%s) does not exist!\n' % PYHERA)
+	elif not os.path.exists(SCARA):
+		sys.stderr.write('\nChecking tools: ScaRa script (%s) does not exist!\n' % SCARA)
 		return False
 	elif not os.path.exists(MINIMAP2):
 		sys.stderr.write('\nChecking tools: Minmap2 executable (%s) does not exist!\n' % MINIMAP2)
@@ -68,7 +68,7 @@ def check_tools():
 
 
 # TODO:
-def run_pyhera(contigsfile, readsfile, resultfile, c2r_ovl_file = None, r2r_ovl_file = None, PHoptions = default_PHoptions):
+def run_sacra(contigsfile, readsfile, resultfile, c2r_ovl_file = None, r2r_ovl_file = None, PHoptions = default_PHoptions):
 	pass
 
 
@@ -80,13 +80,13 @@ def run_ezra(runfolder, resultfile, contigsfile = None, readsfile=None, c2r_ovl_
 
 def scaffold_with_plan(contigsfile, readsfile, paramdict, resultsfolder = None, plan = default_plan):
 
-	global SCRIPT_PATH, PYHERA, MINIMAP2, EZRA, PYTHON
+	global SCRIPT_PATH, SCARA, MINIMAP2, EZRA, PYTHON
 
 	allowed_ops= ['E', 'P']
 	max_cnt = 9
 	pattern = '(.)(\d+)'
 	operations = re.findall(pattern, plan)
-	pyhera = False
+	scara = False
 	# Checking if the plan is correct
 	for op in operations:
 		sop = op[0]
@@ -98,7 +98,7 @@ def scaffold_with_plan(contigsfile, readsfile, paramdict, resultsfolder = None, 
 			sys.stderr.write('\nERROR: Invalid operation count in scaffolding plan: %d (%s)' % (cnt, plan))
 			return False
 		if sop == 'P':
-			pyhera = True
+			scara = True
 
 	sys.stderr.write('\nSTARTING SCAFFOLDING SCRIPT WITH PLAN: %s' % plan)
 
@@ -113,11 +113,11 @@ def scaffold_with_plan(contigsfile, readsfile, paramdict, resultsfolder = None, 
 	else:
 		sys.stderr.write('\nResults folder found: %s' % resultsfolder_path)
 
-	# If running pyhera, create reads to reads overlaps using Minimap2
+	# If running ScaRa, create reads to reads overlaps using Minimap2
 	reads2reads_file = os.path.join(resultsfolder, 'reads2reads_ovl.paf')
-	if pyhera:
+	if scara:
 		if os.path.exists(reads2reads_file):
-			sys.stderr.write('\nRead overlaps for PyHera found: %s' % reads2reads_file)
+			sys.stderr.write('\nRead overlaps for ScaRa found: %s' % reads2reads_file)
 		else:
 			cmd = '%s %s %s %s > %s' % (MINIMAP2, default_MM2options, readsfile, readsfile, reads2reads_file)
 			sys.stderr.write('\nRUNNING COMMAND: %s' % cmd)
@@ -134,7 +134,7 @@ def scaffold_with_plan(contigsfile, readsfile, paramdict, resultsfolder = None, 
 		cnt = int(op[1])
 		for i in xrange(cnt):
 			# 1. Create results subfolder
-			scaffolder = 'PyHera' if sop == 'P' else 'Ezra'
+			scaffolder = 'ScaRa' if sop == 'P' else 'Ezra'
 			sys.stderr.write('\nScaffolding iteration %d using %s' % (iteration, scaffolder))
 			results_subfolder = os.path.join(resultsfolder_path, 'iter%0d' % iteration)
 			if not os.path.exists(results_subfolder):
@@ -201,7 +201,7 @@ def scaffold_with_plan(contigsfile, readsfile, paramdict, resultsfolder = None, 
 				# 2P Run Minimap2 to generate overlaps between contigs and reads
 				# NOTE: include minimap options in here
 				if os.path.exists(reads2contigs_file):
-					sys.stderr.write('\nContig-reads ovelaps for PyHera found: %s' % reads2contigs_file)
+					sys.stderr.write('\nContig-reads ovelaps for ScaRa found: %s' % reads2contigs_file)
 				else:
 					cmd = '%s %s %s %s > %s' % (MINIMAP2, default_MM2options, temp_contigs_file, readsfile, reads2contigs_file)
 					sys.stderr.write('\nRUNNING COMMAND: %s' % cmd)
@@ -210,17 +210,17 @@ def scaffold_with_plan(contigsfile, readsfile, paramdict, resultsfolder = None, 
 					with open(logfile, 'w') as lfile:
 						lfile.write(output)
 
-				# 3P Run Pyhera scaffolding
+				# 3P Run ScaRa scaffolding
 				if os.path.exists(resultfile):
-					sys.stderr.write('\nResults for PyHera found: %s' % resultfile)
+					sys.stderr.write('\nResults for ScaRa found: %s' % resultfile)
 				else:
-					cmd = '%s %s scaffold %s %s %s %s -o %s' % (PYTHON, PYHERA, temp_contigs_file, readsfile, reads2contigs_file, reads2reads_file, resultfile)
+					cmd = '%s %s scaffold %s %s %s %s -o %s' % (PYTHON, SCARA, temp_contigs_file, readsfile, reads2contigs_file, reads2reads_file, resultfile)
 					sys.stderr.write('\nRUNNING COMMAND: %s' % cmd)
 					(status, output) = commands.getstatusoutput(cmd)
-					logfile = os.path.join(results_subfolder, 'PyHera_i%0d.log' % iteration)
+					logfile = os.path.join(results_subfolder, 'ScaRa_i%0d.log' % iteration)
 					with open(logfile, 'w') as lfile:
 						lfile.write(output)
-					# If PyHera doesn't produce a scaffold file, copy the last one
+					# If ScaRa doesn't produce a scaffold file, copy the last one
 					if not os.path.exists(resultfile):
 						shutil.copy(temp_contigs_file, resultfile)
 
@@ -257,7 +257,7 @@ def scaffolding_script(contigsfile, readsfile, paramdict):
 
 
 def verbose_usage_and_exit():
-    sys.stderr.write('scaffolder - scaffold combining PYHERA and EZRA algorithms.\n')
+    sys.stderr.write('scaffolder - scaffold combining SCARA and EZRA algorithms.\n')
     sys.stderr.write('\n')
     sys.stderr.write('Usage:\n')
     sys.stderr.write('\t%s [contigs file] [reads file] options\n' % sys.argv[0])

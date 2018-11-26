@@ -95,7 +95,6 @@ Scaffolding script was tested on two Salmonella Enterica datasets (NCTC10384 and
 
 In both cases, scaffolding resulted in the improvement of the assembly, but the final quality is heavily dependant on the initial assembly.
 
-### Example
 
 |Dataset|No. sequences|Total length|N50|
 |---|---|---|---|

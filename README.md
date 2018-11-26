@@ -79,7 +79,7 @@ A basic command to run the scaffolding script:
 
 Available options will be printed out when running the script without arguments.
 
-The scaffolding script will combine Ezra and ScaRa tools and run them in several iterations for more complete and correct scaffolding. The script will generate a separate folder for each iteration of scffolding. The final result will be in the folder relating to the last iteration.
+The scaffolding script will combine Ezra and ScaRa tools and run them in several iterations for more complete and correct scaffolding. The script will generate a separate folder for each iteration of scffolding. The final result will be in the folder relating to the last iteration. By default, the script will run Ezra 3 times and then ScarRa 1 time. We found that this combination worked reasonably well in our testing.
 
 __Racon__
 The scaffolding script can also be instructed run racon on the initial contigs, on the final scaffolds and after each iteration of scaffolding. This can be specified using options:
@@ -90,13 +90,10 @@ The scaffolding script can also be instructed run racon on the initial contigs, 
 __Minimap2__
 The scaffolding script will run Minimap2 to calcualte overlaps as needed by Ezra, Scara and possibly Racon.
 
-__Scaffolding plan__
-The scaffolding script will combine Ezra and ScaRa tools to perform the scaffolding. By default, it will run Ezra 3 times and then ScarRa 1 time. We found that this combination works quite well in our testing. However, it is possible to specify a different combination of Ezra and ScaRa. We call this a scaffolding plan. A specific scaffolding plan can be set using option `<--plan>`, followed by a string. The plan is a series of character pairs. First character must be either 'S' for Scara or 'E' for Ezra, and second character is a numeral representing a number of iteration for the respecting tools. So out default plan is represented by 'E3S1', meaning run Ezra 3 times followed by running ScaRa 1 time.
-
 ## Testing
-Scaffolding script was tested on several Salmonella Enterica datasets. [Minimap2](https://github.com/lh3/minimap2) was used to generate overalps. Initial assembly was done using [Rala](https://github.com/rvaser/rala). Obtained contigs were then scaffolded using scaffolding script and several different scaffolding plans. Finally scaffolds were compared to the reference using [gepard tool](http://cube.univie.ac.at/gepard).
+Scaffolding script was tested on several Salmonella Enterica datasets. [Minimap2](https://github.com/lh3/minimap2) was used to generate overalps. Initial assembly was done using [Rala](https://github.com/rvaser/rala). Initial assembly was first corrected using [Racon](https://github.com/isovic/racon)  Obtained contigs were then scaffolded using our scaffolding script. After each scaffolding iteration, Racon was also run to correct the results. Finally scaffolds were compared to the reference using using N50 measure and visually using [gepard tool](http://cube.univie.ac.at/gepard).
 
-In general, all plans resulted in the improvement of the assembly, but the final quality heavily depended on the plan.
+In general, all plans resulted in the improvement of the assembly, but the final quality heavily dependant on the initial assembly.
 
 ### Example
 On one dataset Rala produced highly fragmented assembly containing 18 contigs. Gepard image is given below:

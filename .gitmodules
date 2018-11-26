@@ -7,3 +7,6 @@
 [submodule "ezra"]
 	path = ezra
 	url = https://gitlab.com/Krpa/ezra.git
+[submodule "racon"]
+	path = racon
+	url = https://github.com/isovic/racon.git

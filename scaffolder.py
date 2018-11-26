@@ -18,10 +18,13 @@ paramdefs = {'--version' : 0,
              '--results' : 1,
              '--MM2Options' : 1,
              '--EOptions' : 1,
-             '--POptions' : 1}
+             '--POptions' : 1,
+             '--racon' : 0,
+             '--racon-start' : 0,
+             '--racon-end' : 0}
 
 # A default scaffolding plan, run ScaRa once and then Ezra three times
-default_plan = 'P1E3'
+default_plan = 'E3S1'
 
 # Placeholders for default options for running ScaRa and Ezra
 default_PHoptions = ''
@@ -30,9 +33,10 @@ default_MM2options = '-t 12 -x ava-pb --dual=yes'
 
 # Setting run names for ScaRa, Ezra, Minimap2 and Python
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
-SCARA = os.path.join(SCRIPT_PATH, 'SCARA.py')
+SCARA = os.path.join(SCRIPT_PATH, 'scara.py')
 MINIMAP2 = os.path.join(SCRIPT_PATH, 'minimap2', 'minimap2')
 EZRA = os.path.join(SCRIPT_PATH, 'ezra', 'build', 'ezra')
+RACON = os.path.join(SCRIPT_PATH, 'racon', 'build', 'bin', 'racon')
 PYTHON = 'python'
 
 
@@ -82,7 +86,7 @@ def scaffold_with_plan(contigsfile, readsfile, paramdict, resultsfolder = None, 
 
 	global SCRIPT_PATH, SCARA, MINIMAP2, EZRA, PYTHON
 
-	allowed_ops= ['E', 'P']
+	allowed_ops= ['E', 'S']
 	max_cnt = 9
 	pattern = '(.)(\d+)'
 	operations = re.findall(pattern, plan)
@@ -97,7 +101,7 @@ def scaffold_with_plan(contigsfile, readsfile, paramdict, resultsfolder = None, 
 		if cnt < 1 or cnt > max_cnt:
 			sys.stderr.write('\nERROR: Invalid operation count in scaffolding plan: %d (%s)' % (cnt, plan))
 			return False
-		if sop == 'P':
+		if sop == 'S':
 			scara = True
 
 	sys.stderr.write('\nSTARTING SCAFFOLDING SCRIPT WITH PLAN: %s' % plan)
@@ -114,7 +118,7 @@ def scaffold_with_plan(contigsfile, readsfile, paramdict, resultsfolder = None, 
 		sys.stderr.write('\nResults folder found: %s' % resultsfolder_path)
 
 	# If running ScaRa, create reads to reads overlaps using Minimap2
-	reads2reads_file = os.path.join(resultsfolder, 'reads2reads_ovl.paf')
+	reads2reads_file = os.path.join(resultsfolder_path, 'reads2reads_ovl.paf')
 	if scara:
 		if os.path.exists(reads2reads_file):
 			sys.stderr.write('\nRead overlaps for ScaRa found: %s' % reads2reads_file)
@@ -126,15 +130,38 @@ def scaffold_with_plan(contigsfile, readsfile, paramdict, resultsfolder = None, 
 			with open(logfile, 'w') as lfile:
 				lfile.write(output)
 
-	# Executing the plan
+	# If specified in options run racon on the initial data
 	temp_contigs_file = contigs_file
+	if '--racon-start' in paramdict:
+		fname, fext = os.path.splitext(contigs_file)
+		racon_file = os.path.join(resultsfolder_path, fname + '_racon' + fext)
+		reads2contigs_file = os.path.join(resultsfolder_path, 'readsToContigs_racon.paf')
+
+		if os.path.exists(racon_file):
+			sys.stderr.write('\nInitial rancon file found: %s' % racon_file)
+		else:
+			# Run minimap2 to calculate overlaps
+			cmd = '%s %s %s %s > %s' % (MINIMAP2, default_MM2options, contigs_file, reads_file, reads2contigs_file)
+			sys.stderr.write('\nRUNNING COMMAND: %s' % cmd)
+			(status, output) = commands.getstatusoutput(cmd)
+			logfile = os.path.join(resultsfolder_path, 'Minimap2_r2c.log')
+
+			# Run racon
+			cmd = '%s %s %s %s > %s' % (RACON, reads_file, reads2contigs_file, contigs_file, racon_file)
+			sys.stderr.write('\nRUNNING COMMAND: %s' % cmd)
+			(status, output) = commands.getstatusoutput(cmd)
+			logfile = os.path.join(resultsfolder_path, 'Racon_initial.log')
+
+		temp_contigs_file = racon_file
+
+	# Executing the plan
 	iteration = 1
 	for op in operations:
 		sop = op[0]
 		cnt = int(op[1])
 		for i in xrange(cnt):
 			# 1. Create results subfolder
-			scaffolder = 'ScaRa' if sop == 'P' else 'Ezra'
+			scaffolder = 'ScaRa' if sop == 'S' else 'Ezra'
 			sys.stderr.write('\nScaffolding iteration %d using %s' % (iteration, scaffolder))
 			results_subfolder = os.path.join(resultsfolder_path, 'iter%0d' % iteration)
 			if not os.path.exists(results_subfolder):
@@ -194,7 +221,7 @@ def scaffold_with_plan(contigsfile, readsfile, paramdict, resultsfolder = None, 
 				temp_contigs_file = resultfile
 				iteration += 1
 
-			elif sop == 'P':
+			elif sop == 'S':
 				resultfile = os.path.join(results_subfolder, 'scaffolds_iter%0d.fasta' % iteration)
 				reads2contigs_file = os.path.join(results_subfolder, 'reads2contigs.paf')
 
@@ -224,9 +251,55 @@ def scaffold_with_plan(contigsfile, readsfile, paramdict, resultsfolder = None, 
 					if not os.path.exists(resultfile):
 						shutil.copy(temp_contigs_file, resultfile)
 
-				#4P Prepare for the next iteration
+				# Prepare for the next iteration
 				temp_contigs_file = resultfile
 				iteration += 1
+
+				# Run racon after each iteration, if specified
+				if '--racon' in paramdict:
+					fname, fext = os.path.splitext(temp_contigs_file)
+					racon_file = os.path.join(results_subfolder, fname + '_racon' + fext)
+					reads2contigs_file = os.path.join(results_subfolder, 'readsToContigs_racon.paf')
+
+					if os.path.exists(racon_file):
+						sys.stderr.write('\nRacon file for iteration %0d found: %s' % (iteration-1, racon_file))
+					else:
+						# Run minimap2 to calculate overlaps
+						cmd = '%s %s %s %s > %s' % (MINIMAP2, default_MM2options, temp_contigs_file, reads_file, reads2contigs_file)
+						sys.stderr.write('\nRUNNING COMMAND: %s' % cmd)
+						(status, output) = commands.getstatusoutput(cmd)
+						logfile = os.path.join(results_subfolder, 'Minimap2_r2c.log')
+
+						# Run racon
+						cmd = '%s %s %s %s > %s' % (RACON, reads_file, reads2contigs_file, temp_contigs_file, racon_file)
+						sys.stderr.write('\nRUNNING COMMAND: %s' % cmd)
+						(status, output) = commands.getstatusoutput(cmd)
+						logfile = os.path.join(results_subfolder, 'Racon_I%0d.log' % (iteration - 1))
+
+					temp_contigs_file = racon_file
+
+
+	# Run racon one final time, if specified
+	if '--racon-end' in paramdict:
+		fname, fext = os.path.splitext(temp_contigs_file)
+		racon_file = os.path.join(results_subfolder, fname + '_racon' + fext)
+		reads2contigs_file = os.path.join(results_subfolder, 'readsToContigs_racon.paf')
+
+		if os.path.exists(racon_file):
+			sys.stderr.write('\nFinal racon file found: %s' % racon_file)
+		else:
+			# Run minimap2 to calculate overlaps
+			cmd = '%s %s %s %s > %s' % (MINIMAP2, default_MM2options, temp_contigs_file, reads_file, reads2contigs_file)
+			sys.stderr.write('\nRUNNING COMMAND: %s' % cmd)
+			(status, output) = commands.getstatusoutput(cmd)
+			logfile = os.path.join(results_subfolder, 'Minimap2_r2c.log')
+
+			# Run racon
+			cmd = '%s %s %s %s > %s' % (RACON, reads_file, reads2contigs_file, temp_contigs_file, racon_file)
+			sys.stderr.write('\nRUNNING COMMAND: %s' % cmd)
+			(status, output) = commands.getstatusoutput(cmd)
+			logfile = os.path.join(results_subfolder, 'Racon_final.log')
+
 
 	return True
 
@@ -263,7 +336,16 @@ def verbose_usage_and_exit():
     sys.stderr.write('\t%s [contigs file] [reads file] options\n' % sys.argv[0])
     sys.stderr.write('options:"\n')
     sys.stderr.write('-r (--results) <folder> : output folder, it will be created if it does not exist\n')
-    sys.stderr.write('-p (--plan) <plan> : Execution plan for the dcaffolding script (default: 1P3E)\n')
+    sys.stderr.write('-p (--plan) <plan> : Execution plan for the scaffolding script (default: %s)\n' % default_plan)
+    sys.stderr.write('                     A scaffolding plan is a series of character pairs. The first character\n')
+    sys.stderr.write('                     in the pair represents a scaffolding tool (S for ScaRa, E for Ezra)\n')
+    sys.stderr.write('                     and the second character represents a number of iterations.\n')
+    sys.stderr.write('                     For example, plan \'E3S2\' means that the script will first run\n')
+    sys.stderr.write('                     Ezra 3 time, and then ScaRa 2 times.\n')
+    sys.stderr.write('--racon-start :	   Run racon on the initial contigs, before running any scaffolding tools.\n')
+    sys.stderr.write('--racon-end :  	   Run racon on the final scaffolds, after completing all scaffoldng iterations.\n')
+    sys.stderr.write('--racon :     	   Run racon on the results of each scaffolding iteration, before proceeding\n')
+    sys.stderr.write('              	   to the next one.\n')
     sys.stderr.write('\n')
     exit(0)
 

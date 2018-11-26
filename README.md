@@ -106,13 +106,13 @@ In both cases, scaffolding resulted in the improvement of the assembly, but the 
 |NCTC12417 after ScaRa| 4|5031200|3481081|
 
 
-<p float="left" align="center">
+<p float="left">
   <img src=NCTC10384_rala_racon_dotplot.jpeg width="400" />
   <img src=NCTC10384_scara_dotplot.jpeg width="400" /> 
 </p>
 
 
-<p float="left" align="center">
+<p float="left">
   <img src=NCTC12417_rala_dotplot.jpeg width="400" />
   <img src=NCTC12417_scara_dotplot.jpeg width="400" /> 
 </p>

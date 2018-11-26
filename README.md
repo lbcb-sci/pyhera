@@ -1,7 +1,7 @@
 # Scaffolding with ScaRa
 This repository contains python scripts and binaries comprising our tools for genome scaffolding.
 
-The  tools are currently under development and any feedback on them is very welcome and will be greatly appreciated.
+The tools are currently under development and any feedback on them is very welcome and will be greatly appreciated.
 
 ## Tools
 ### ScaRa
@@ -37,6 +37,14 @@ Scaffolding script combines ScaRa and Ezra, according to a given scaffolding pla
     cd Minimap2
     make
 
+  4. Nuild Racon
+  
+    cd racon
+    mkdir build
+    cd build
+    cmake -DCMAKE_BUILD_TYPE=Release ..
+    make
+
   Pythons scripts, such as ScaRa, Scaffolder script and samscripts tool do not need to be installed.
 
 ### Dependencies
@@ -65,18 +73,27 @@ Aside from overlaps between reads and contigs, ScaRa also requires overlaps betw
 ### Running Scaffolding script
 Scaffolding script combines Ezra and ScaRa and is run using `<scaffold.py>` script from the root folder of the repository.
 
-A typical command to run the scaffolding script:
+A basic command to run the scaffolding script:
 
-    python scaffold.py contigs.fasta reads.fastq --results results_folder --plan P1E3
+    python scaffold.py contigs.fasta reads.fastq --results results_folder
 
-The script will combine Ezra and ScaRa according to a given scaffolding plan. A scaffolding plan is a series of letter-number pairs, where letter defines the scaffolder and the number defines the number of iterations for that scaffolder. The scaffolding script will run Minimap2 to calcualte needed overlaps and will generate a separate folder for each iteration of scffolding. The final result will be in the folder relating to the last iteration.
+Available options will be printed out when running the script without arguments.
 
-If the scffolding plan is not specified, the default plan will be used. The default plan is E3P1 - run Ezra three times and then ScaRa once. Ezra usually gives better results after a few iterations so we suggest running Ezra at least three times.
+The scaffolding script will combine Ezra and ScaRa tools and run them in several iterations for more complete and correct scaffolding. The script will generate a separate folder for each iteration of scffolding. The final result will be in the folder relating to the last iteration. By default, the script will run Ezra 3 times and then ScarRa 1 time. We found that this combination worked reasonably well in our testing.
+
+__Racon__
+The scaffolding script can also be instructed run racon on the initial contigs, on the final scaffolds and after each iteration of scaffolding. This can be specified using options:
+  - `<--racon-start>` - run racon on the initial contigs, before scaffolding
+  - `<--racon-end>`   - run racon on the final scaffold
+  - `<--racon>`       - run racon after each iteration
+
+__Minimap2__
+The scaffolding script will run Minimap2 to calcualte overlaps as needed by Ezra, Scara and possibly Racon.
 
 ## Testing
-Scaffolding script was tested on several Salmonella Enterica datasets. [Minimap2](https://github.com/lh3/minimap2) was used to generate overalps. Initial assembly was done using [Rala](https://github.com/rvaser/rala). Obtained contigs were then scaffolded using scaffolding script and several different scaffolding plans. Finally scaffolds were compared to the reference using [gepard tool](http://cube.univie.ac.at/gepard).
+Scaffolding script was tested on several Salmonella Enterica datasets. [Minimap2](https://github.com/lh3/minimap2) was used to generate overalps. Initial assembly was done using [Rala](https://github.com/rvaser/rala). Initial assembly was first corrected using [Racon](https://github.com/isovic/racon)  Obtained contigs were then scaffolded using our scaffolding script. After each scaffolding iteration, Racon was also run to correct the results. Finally scaffolds were compared to the reference using using N50 measure and visually using [gepard tool](http://cube.univie.ac.at/gepard).
 
-In general, all plans resulted in the improvement of the assembly, but the final quality heavily depended on the plan.
+In general, all plans resulted in the improvement of the assembly, but the final quality heavily dependant on the initial assembly.
 
 ### Example
 On one dataset Rala produced highly fragmented assembly containing 18 contigs. Gepard image is given below:

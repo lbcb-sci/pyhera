@@ -37,7 +37,7 @@ Scaffolding script combines ScaRa and Ezra, according to a given scaffolding pla
     cd Minimap2
     make
 
-  4. Nuild Racon
+  4. Build Racon
   
     cd racon
     mkdir build

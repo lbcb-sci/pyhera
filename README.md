@@ -107,14 +107,14 @@ Table with the results:
 
 Gepard dotplots for dataset NCTC10384 against the reference (before the scaffolding - left, after the scaffolding - right):
 
-<p float="left" align="center">
+<p float="left">
   <img src=images/NCTC10384_rala_racon_dotplot.jpeg width="400" />
   <img src=images/NCTC10384_scara_dotplot.jpeg width="400" /> 
 </p>
 
 Gepard dotplots for dataset NCTC12417 against the reference (before the scaffolding - left, after the scaffolding - right):
 
-<p float="left" align="center">
+<p float="left">
   <img src=images/NCTC12417_rala_dotplot.jpeg width="400" />
   <img src=images/NCTC12417_scara_dotplot.jpeg width="400" /> 
 </p>

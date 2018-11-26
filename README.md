@@ -91,21 +91,29 @@ __Minimap2__
 The scaffolding script will run Minimap2 to calcualte overlaps as needed by Ezra, Scara and possibly Racon.
 
 ## Testing
-Scaffolding script was tested on several Salmonella Enterica datasets. [Minimap2](https://github.com/lh3/minimap2) was used to generate overalps. Initial assembly was done using [Rala](https://github.com/rvaser/rala). Initial assembly was first corrected using [Racon](https://github.com/isovic/racon)  Obtained contigs were then scaffolded using our scaffolding script. After each scaffolding iteration, Racon was also run to correct the results. Finally scaffolds were compared to the reference using using N50 measure and visually using [gepard tool](http://cube.univie.ac.at/gepard).
+Scaffolding script was tested on two Salmonella Enterica datasets (NCTC10384 and NCTC12417). [Minimap2](https://github.com/lh3/minimap2) was used to generate overalps. Initial assembly was done using [Rala](https://github.com/rvaser/rala). Initial assembly was first corrected using [Racon](https://github.com/isovic/racon). Obtained contigs were then scaffolded using our scaffolding script. After each scaffolding iteration, Racon was also run to correct the results. Finally scaffolds were compared to the reference using using N50 measure and visually using [gepard tool](http://cube.univie.ac.at/gepard).
 
-In general, all plans resulted in the improvement of the assembly, but the final quality heavily dependant on the initial assembly.
+In both cases, scaffolding resulted in the improvement of the assembly, but the final quality is heavily dependant on the initial assembly.
 
-### Example
-On one dataset Rala produced highly fragmented assembly containing 18 contigs. Gepard image is given below:
 
-<img src=images/NCTC10384_rala_dotplot.jpeg width="400">
+|Dataset|No. sequences|Total length|N50|
+|---|---|---|---|
+|Reference| 3|5133713|5133713|
+|NCTC10384 before ScaRa| 18|4770612|391888|
+|NCTC10384 after ScaRa| 3|4775953|4478216|
+|NCTC12417 before ScaRa| 5|5041995|3311937|
+|NCTC12417 after ScaRa| 4|5031200|3481081|
 
-Running scafolder script with the plan P1E3 reduces this to 7 sequences:
 
-<img src=images/NCTC10384_P1E3_dotplot.jpeg width="400">
+<p float="left" align="center">
+  <img src=images/NCTC10384_rala_racon_dotplot.jpeg width="400" />
+  <img src=images/NCTC10384_scara_dotplot.jpeg width="400" /> 
+</p>
 
-While running scafolder script with the plan E3P1 reduces this to 5 sequences:
 
-<img src=images/NCTC10384_E3P1_dotplot.jpeg width="400">
+<p float="left" align="center">
+  <img src=images/NCTC12417_rala_dotplot.jpeg width="400" />
+  <img src=images/NCTC12417_scara_dotplot.jpeg width="400" /> 
+</p>
 
-The final results is not a perfect assembly, but represents a significant improvement compared to initial contigs. 
+

@@ -95,6 +95,7 @@ Scaffolding script was tested on two Salmonella Enterica datasets (NCTC10384 and
 
 In both cases, scaffolding resulted in the improvement of the assembly, but the final quality is heavily dependant on the initial assembly.
 
+Table with the results:
 
 |Dataset|No. sequences|Total length|N50|
 |---|---|---|---|
@@ -104,16 +105,16 @@ In both cases, scaffolding resulted in the improvement of the assembly, but the 
 |NCTC12417 before ScaRa| 5|5041995|3311937|
 |NCTC12417 after ScaRa| 4|5031200|3481081|
 
+Gepard dotplots for dataset NCTC10384 against the reference:
 
 <p float="left" align="center">
   <img src=images/NCTC10384_rala_racon_dotplot.jpeg width="400" />
   <img src=images/NCTC10384_scara_dotplot.jpeg width="400" /> 
 </p>
 
+Gepard dotplots for dataset NCTC12417 against the reference:
 
 <p float="left" align="center">
   <img src=images/NCTC12417_rala_dotplot.jpeg width="400" />
   <img src=images/NCTC12417_scara_dotplot.jpeg width="400" /> 
 </p>
-
-

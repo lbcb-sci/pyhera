@@ -72,7 +72,7 @@ def check_tools():
 
 
 # TODO:
-def run_sacra(contigsfile, readsfile, resultfile, c2r_ovl_file = None, r2r_ovl_file = None, PHoptions = default_PHoptions):
+def run_bridger(contigsfile, readsfile, resultfile, c2r_ovl_file = None, r2r_ovl_file = None, PHoptions = default_PHoptions):
 	pass
 
 
@@ -300,6 +300,12 @@ def scaffold_with_plan(contigsfile, readsfile, paramdict, resultsfolder = None, 
 			(status, output) = commands.getstatusoutput(cmd)
 			logfile = os.path.join(results_subfolder, 'Racon_final.log')
 
+		temp_contigs_file = racon_file
+
+	# Final result is in the temp_contigs_file
+	# Copy it to the root results folder!
+	resultsfile = os.path.join(resultsfolder_path, "scara_scaffolds_final.fasta")
+	os.shutil.copy(temp_contigs_file, resultsfile)
 
 	return True
 

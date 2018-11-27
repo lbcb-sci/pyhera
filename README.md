@@ -62,9 +62,9 @@ __Minimap2__
 ScaRa will run Minimap2 to calcualte overlaps as needed for the scaffolding and also for Racon.
 
 ## Testing
-Scaffolding script was tested on two Salmonella Enterica datasets (NCTC10384 and NCTC12417). [Minimap2](https://github.com/lh3/minimap2) was used to generate overalps. Initial assembly was done using [Rala](https://github.com/rvaser/rala). Initial assembly was first corrected using [Racon](https://github.com/isovic/racon). Obtained contigs were then scaffolded using our scaffolding script. After each scaffolding iteration, Racon was also run to correct the results. Finally scaffolds were compared to the reference using using N50 measure and visually using [gepard tool](http://cube.univie.ac.at/gepard).
+ScaRa was initially tested on a Salmonella Enterica datasets (NCTC10384), further testing is in progress. [Minimap2](https://github.com/lh3/minimap2) was used to generate overlaps. Initial assembly was done using [Rala](https://github.com/rvaser/rala) which is a path of [Ra  assembly pipeline](https://github.com/rvaser/ra). Initial assembly was first corrected using [Racon](https://github.com/isovic/racon). Obtained contigs were then scaffolded using our scaffolding script. After each scaffolding iteration, Racon was also run to correct the results. Finally scaffolds were compared to the reference using using N50 measure and visually using [gepard tool](http://cube.univie.ac.at/gepard).
 
-In both cases, scaffolding resulted in the improvement of the assembly, but the final quality is heavily dependant on the initial assembly. For the first dataset, the assembly is improved significantly, and very close to the reference, both in the number of contigs and their length. For the second dataset, scaffolding only connected two contigs, increasing the assembly quality only slightly.
+We can see that running ScaRa noticably improved the assembly.
 
 Table with the results:
 
@@ -73,19 +73,10 @@ Table with the results:
 |Reference| 3|5133713|5133713|
 |NCTC10384 before ScaRa| 18|4770612|391888|
 |NCTC10384 after ScaRa| 3|4775953|4478216|
-|NCTC12417 before ScaRa| 5|5041995|3311937|
-|NCTC12417 after ScaRa| 4|5031200|3481081|
 
 Gepard dotplots for dataset NCTC10384 against the reference (before the scaffolding - left, after the scaffolding - right):
 
 <p float="left">
   <img src=images/NCTC10384_rala_racon_dotplot.jpeg width="400" />
   <img src=images/NCTC10384_scara_dotplot.jpeg width="400" /> 
-</p>
-
-Gepard dotplots for dataset NCTC12417 against the reference (before the scaffolding - left, after the scaffolding - right):
-
-<p float="left">
-  <img src=images/NCTC12417_rala_dotplot.jpeg width="400" />
-  <img src=images/NCTC12417_scara_dotplot.jpeg width="400" /> 
 </p>

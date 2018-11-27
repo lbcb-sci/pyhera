@@ -1,20 +1,11 @@
 # Scaffolding with ScaRa
-This repository contains python scripts and binaries comprising our tools for genome scaffolding.
+This repository contains python scripts and binaries comprising our ScaRa tools for genome scaffolding.
 
-The tools are currently under development and any feedback on them is very welcome and will be greatly appreciated.
+The tool is still under development and any feedback on it is very welcome and will be greatly appreciated. We also do not recommend running it on larger genome since it is run on a single thread, is not optimised and might run for a long time. We are currently working on parallelizing all major processes.
 
-## Tools
-### ScaRa
-ScaRa is a python implementation of our scaffolding algorithm which uses some concepts from the HERA scaffolder paper (https://www.biorxiv.org/content/early/2018/06/13/345983). It uses overlaps between contigs and reads and also self-overalps between reads to generate a graph. It then generates numerous paths between contigs, groups them according to their length and choses the best representative path.
+ScaRa is based on Ezra scaffolding tool (http://complex.zesoi.fer.hr/data/pdf/Ivan_Krpelnik_diplomski.pdf) and uses come concepts from the HERA scaffolder paper (https://www.biorxiv.org/content/early/2018/06/13/345983). It consists of two phases, extension phase abd bridging phase, which can be run multiple time. Extension phase uses MSA (Multiple Sequence Alignment) and POA (Partial OrderAlignment) graphs, while bridging phase constructs paths betwewen contigs using reads that overlap and then tries to determine the best path.
 
-### Ezra
-Ezra is a result of a graduation thesis work done by Ivan Krpelnik on University of Zareb Faculty of Electrical Engineering and Computing. Ezra uses MSA (Multiple Sequence Alignment) to extend contigs on each end and is also able to connect two contigs using long reads that overlap with both of them. To make the best use of the extension step, Ezra should be run in several iterations.
-This thesis is available here: http://complex.zesoi.fer.hr/data/pdf/Ivan_Krpelnik_diplomski.pdf.
-
-Ezra is included as a submodule, with main repository at: https://gitlab.com/Krpa/ezra.
-
-### Scaffolding script
-Scaffolding script combines ScaRa and Ezra, according to a given scaffolding plan, to iteratively perform the scaffolding, using output of the previous iteration as input for the next one. The script will use Minimap2 to produce overlaps needed for the scaffolding.
+ScaRa uses Minimap2 to generate everlaps as needed, and can use Racon to correct the contigs at the start, et the end od after each iteration of the scaffolding process.
 
 ## Installation
 
@@ -45,50 +36,30 @@ Scaffolding script combines ScaRa and Ezra, according to a given scaffolding pla
     cmake -DCMAKE_BUILD_TYPE=Release ..
     make
 
-  Pythons scripts, such as ScaRa, Scaffolder script and samscripts tool do not need to be installed.
+Pythons scripts, such as Bridger, ScaRa and Samscripts tool do not need to be installed.
 
 ### Dependencies
-Python scripts require PYthon2.7. Ezra requires CMake 3.5.
+Python scripts require PYthon2.7. Ezra and Racon require CMake 3.5.
 
-## Running the scripts
-### Running Ezra
-After building, Ezra executable will be created in `<Ezra/build>` folder. Ezra receives a single folder as an argument and outputs scaffolds to the standard output. The folder must contain the following files:
-- reads.fastq - file with read sequences, must be in FASTQ format
-- contigs.fasta - file with contig sequences
-- readsToContigs.paf - file with overlaps between reads and contigs, when calculating overlaps, contigs must be used as reference
+## Running ScaRa
+ScaRa is run using `<scara.py>` script from the root folder of the repository.
 
-Typical Ezra run command:
+A basic command for running ScaRa:
 
-    ezra folder > output.fasta
-
-### Running ScaRa
-ScaRa is run by running `<scara.py>` script, from the root folder of the repository. ScaRa can be run with several options and various arguments, which are printed to the screen when running the script without arguments.
-
-A typical command to run ScaRa for scaffolding:
-    
-    python scara.py scaffold contigs.fasta reads.fastq readsToContigs.paf readsToReads.paf -o output.fasta
-
-Aside from overlaps between reads and contigs, ScaRa also requires overlaps between reads and reads (self-overlaps).
-
-### Running Scaffolding script
-Scaffolding script combines Ezra and ScaRa and is run using `<scaffold.py>` script from the root folder of the repository.
-
-A basic command to run the scaffolding script:
-
-    python scaffold.py contigs.fasta reads.fastq --results results_folder
+    python scara.py contigs.fasta reads.fastq --results results_folder
 
 Available options will be printed out when running the script without arguments.
 
-The scaffolding script will combine Ezra and ScaRa tools and run them in several iterations for more complete and correct scaffolding. The script will generate a separate folder for each iteration of scffolding. The final result will be in the folder relating to the last iteration. By default, the script will run Ezra 3 times and then ScarRa 1 time. We found that this combination worked reasonably well in our testing.
+The scaffolding will run  in several iterations for more complete and correct scaffolding. The script will generate a separate folder for each iteration of scffolding. The final result will be in the root results folder named `<scara_scaffolds_final.fasta>`.
 
 __Racon__
-The scaffolding script can also be instructed run racon on the initial contigs, on the final scaffolds and after each iteration of scaffolding. This can be specified using options:
+ScaRa script can also be instructed run Racon on the initial contigs, on the final scaffolds and after each iteration of scaffolding. This can be specified using options:
   - `<--racon-start>` - run racon on the initial contigs, before scaffolding
   - `<--racon-end>`   - run racon on the final scaffold
   - `<--racon>`       - run racon after each iteration
 
 __Minimap2__
-The scaffolding script will run Minimap2 to calcualte overlaps as needed by Ezra, Scara and possibly Racon.
+ScaRa will run Minimap2 to calcualte overlaps as needed for the scaffolding and also for Racon.
 
 ## Testing
 Scaffolding script was tested on two Salmonella Enterica datasets (NCTC10384 and NCTC12417). [Minimap2](https://github.com/lh3/minimap2) was used to generate overalps. Initial assembly was done using [Rala](https://github.com/rvaser/rala). Initial assembly was first corrected using [Racon](https://github.com/isovic/racon). Obtained contigs were then scaffolded using our scaffolding script. After each scaffolding iteration, Racon was also run to correct the results. Finally scaffolds were compared to the reference using using N50 measure and visually using [gepard tool](http://cube.univie.ac.at/gepard).

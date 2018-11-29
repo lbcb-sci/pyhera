@@ -1,7 +1,7 @@
 # Scaffolding with ScaRa
 This repository contains python scripts and binaries comprising our ScaRa tools for genome scaffolding.
 
-The tool is still under development and any feedback on it is very welcome and will be greatly appreciated. We also do not recommend running it on larger genome since it is run on a single thread, is not optimised and might run for a long time. We are currently working on parallelizing all major processes.
+__DISCLAIMER__: The tool is still under development and any feedback on it is very welcome and will be greatly appreciated. We also do not recommend running it on larger genome since it is run on a single thread, is not optimised and might run for a long time. We are currently working on parallelizing all major processes.
 
 ScaRa is based on Ezra scaffolding tool (http://complex.zesoi.fer.hr/data/pdf/Ivan_Krpelnik_diplomski.pdf) and uses come concepts from the HERA scaffolder paper (https://www.biorxiv.org/content/early/2018/06/13/345983). It consists of two phases, extension phase abd bridging phase, which can be run multiple time. Extension phase uses MSA (Multiple Sequence Alignment) and POA (Partial OrderAlignment) graphs, while bridging phase constructs paths betwewen contigs using reads that overlap and then tries to determine the best path.
 
@@ -61,10 +61,8 @@ ScaRa script can also be instructed run Racon on the initial contigs, on the fin
 __Minimap2__
 ScaRa will run Minimap2 to calcualte overlaps as needed for the scaffolding and also for Racon.
 
-## Testing
-ScaRa was initially tested on a Salmonella Enterica datasets (NCTC10384), further testing is in progress. [Minimap2](https://github.com/lh3/minimap2) was used to generate overlaps. Initial assembly was done using [Rala](https://github.com/rvaser/rala) which is a path of [Ra  assembly pipeline](https://github.com/rvaser/ra). Initial assembly was first corrected using [Racon](https://github.com/isovic/racon). Obtained contigs were then scaffolded using our scaffolding script. After each scaffolding iteration, Racon was also run to correct the results. Finally scaffolds were compared to the reference using using N50 measure and visually using [gepard tool](http://cube.univie.ac.at/gepard).
-
-We can see that running ScaRa noticably improved the assembly.
+## Initial testing
+ScaRa was initially tested on a Salmonella Enterica datasets (NCTC10384), further testing is in progress. [Minimap2](https://github.com/lh3/minimap2) was used to generate overlaps. Initial assembly was done using [Rala](https://github.com/rvaser/rala) which is a path of [Ra  assembly pipeline](https://github.com/rvaser/ra). Initial assembly was first corrected using [Racon](https://github.com/isovic/racon). Obtained contigs were then scaffolded using our scaffolding script. After each scaffolding iteration, Racon was also run to correct the results. Finally scaffolds were compared to the reference using using N50 measure.
 
 Table with the results:
 
@@ -73,10 +71,3 @@ Table with the results:
 |Reference| 3|5133713|5133713|
 |NCTC10384 before ScaRa| 18|4770612|391888|
 |NCTC10384 after ScaRa| 3|4775953|4478216|
-
-Gepard dotplots for dataset NCTC10384 against the reference (before the scaffolding - left, after the scaffolding - right):
-
-<p float="left">
-  <img src=images/NCTC10384_rala_racon_dotplot.jpeg width="400" />
-  <img src=images/NCTC10384_scara_dotplot.jpeg width="400" /> 
-</p>

@@ -3,7 +3,7 @@ This repository contains python scripts and binaries comprising our ScaRa tools 
 
 __DISCLAIMER__: The tool is still under development and any feedback on it is very welcome and will be greatly appreciated. We also do not recommend running it on larger genome since it is run on a single thread, is not optimised and might run for a long time. We are currently working on parallelizing all major processes.
 
-ScaRa is based on Ezra scaffolding tool (http://complex.zesoi.fer.hr/data/pdf/Ivan_Krpelnik_diplomski.pdf) and uses come concepts from the HERA scaffolder paper (https://www.biorxiv.org/content/early/2018/06/13/345983). It consists of two phases, extension phase abd bridging phase, which can be run multiple time. Extension phase uses MSA (Multiple Sequence Alignment) and POA (Partial OrderAlignment) graphs, while bridging phase constructs paths betwewen contigs using reads that overlap and then tries to determine the best path.
+ScaRa is based on Ezra scaffolding tool (http://complex.zesoi.fer.hr/data/pdf/Ivan_Krpelnik_diplomski.pdf) and uses come concepts from the HERA scaffolder paper (https://www.biorxiv.org/content/early/2018/06/13/345983). It consists of two phases, extension phase and bridging phase, each can be run multiple time. Extension phase uses MSA (Multiple Sequence Alignment) and POA (Partial OrderAlignment) graphs, while bridging phase constructs paths betwewen contigs using reads that overlap and then tries to determine the best path.
 
 ScaRa uses Minimap2 to generate everlaps as needed, and can use Racon to correct the contigs at the start, et the end od after each iteration of the scaffolding process.
 

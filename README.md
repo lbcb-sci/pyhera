@@ -60,14 +60,3 @@ ScaRa script can also be instructed run Racon on the initial contigs, on the fin
 
 __Minimap2__
 ScaRa will run Minimap2 to calcualte overlaps as needed for the scaffolding and also for Racon.
-
-## Initial testing
-ScaRa was initially tested on a Salmonella Enterica datasets (NCTC10384), further testing is in progress. [Minimap2](https://github.com/lh3/minimap2) was used to generate overlaps. Initial assembly was done using [Rala](https://github.com/rvaser/rala) which is a path of [Ra  assembly pipeline](https://github.com/rvaser/ra). Initial assembly was first corrected using [Racon](https://github.com/isovic/racon). Obtained contigs were then scaffolded using our scaffolding script. After each scaffolding iteration, Racon was also run to correct the results. Finally scaffolds were compared to the reference using using N50 measure.
-
-Table with the results:
-
-|Dataset|No. sequences|Total length|N50|
-|---|---|---|---|
-|Reference| 3|5133713|5133713|
-|NCTC10384 before ScaRa| 18|4770612|391888|
-|NCTC10384 after ScaRa| 3|4775953|4478216|

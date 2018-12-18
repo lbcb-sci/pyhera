@@ -28,8 +28,10 @@ default_plan = 'E3B1'
 
 # Placeholders for default options for running Bridger and Ezra
 default_PHoptions = ''
-default_Eoptions = ''
+default_Eoptions = '-m'		# for multithreading
 default_MM2options = '-t 12 -x ava-pb --dual=yes'
+
+default_Roptions = '-t 12'		# Using 12 threads with racon
 
 # Setting run names for Bridger, Ezra, Minimap2 and Python
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -147,7 +149,7 @@ def scaffold_with_plan(contigsfile, readsfile, paramdict, resultsfolder = None, 
 			logfile = os.path.join(resultsfolder_path, 'Minimap2_r2c.log')
 
 			# Run racon
-			cmd = '%s %s %s %s > %s' % (RACON, reads_file, reads2contigs_file, contigs_file, racon_file)
+			cmd = '%s %s %s %s %s > %s' % (RACON, reads_file, reads2contigs_file, contigs_file, default_Roptions, racon_file)
 			sys.stderr.write('\nRUNNING COMMAND: %s' % cmd)
 			(status, output) = commands.getstatusoutput(cmd)
 			logfile = os.path.join(resultsfolder_path, 'Racon_initial.log')
@@ -172,37 +174,40 @@ def scaffold_with_plan(contigsfile, readsfile, paramdict, resultsfolder = None, 
 			if sop == 'E':
 				# 2E copy reads and contigs to results subfolder
 				resultfile = os.path.join(results_subfolder, 'scaffolds_iter%0d.fasta' % iteration)
-				new_contigs = os.path.join(results_subfolder, 'contigs.fasta')
-				reads_fname, reads_fext = os.path.splitext(readsfile)
-				if reads_fext.upper() == '.FASTQ' or reads_fext.upper() == '.FQ':
-					new_reads = os.path.join(results_subfolder, 'reads.fastq')
-				else:
-					new_reads = os.path.join(results_subfolder, 'reads.fasta')
+				
+				# new_contigs = os.path.join(results_subfolder, 'contigs.fasta')
+				
+				# KK: OBSOLETE, always uses the same reads file now
+				# reads_fname, reads_fext = os.path.splitext(readsfile)
+				# if reads_fext.upper() == '.FASTQ' or reads_fext.upper() == '.FQ':
+				# 	new_reads = os.path.join(results_subfolder, 'reads.fastq')
+				# else:
+				# 	new_reads = os.path.join(results_subfolder, 'reads.fasta')
 
 				reads2contigs_file = os.path.join(results_subfolder, 'readsToContigs.paf')
 
-				if os.path.exists(new_contigs):
-					sys.stderr.write('\nContigs for Ezra found: %s' % new_contigs)
-				else:
-					shutil.copy(temp_contigs_file, new_contigs)
+				# if os.path.exists(new_contigs):
+				# 	sys.stderr.write('\nContigs for Ezra found: %s' % new_contigs)
+				# else:
+				# 	shutil.copy(temp_contigs_file, new_contigs)
 
-				if os.path.exists(new_reads):
-					sys.stderr.write('\nReads for Ezra found: %s' % new_reads)
-				else:
-					shutil.copy(readsfile, new_reads)
+				# KK: OBSOLETE, always uses the same reads file now
+				# if os.path.exists(new_reads):
+				# 	sys.stderr.write('\nReads for Ezra found: %s' % new_reads)
+				# else:
+				# 	shutil.copy(readsfile, new_reads)
 
 				# 2.1E Run Minimap2 to generate overlaps
 				# NOTE: include minimap options in here
 				if os.path.exists(reads2contigs_file):
 					sys.stderr.write('\nContig-reads ovelaps for Ezra found: %s' % reads2contigs_file)
 				else:
-					cmd = '%s %s %s %s > %s' % (MINIMAP2, default_MM2options, new_contigs, new_reads, reads2contigs_file)
+					cmd = '%s %s %s %s > %s' % (MINIMAP2, default_MM2options, temp_contigs_file, readsfile, reads2contigs_file)
 					sys.stderr.write('\nRUNNING COMMAND: %s' % cmd)
 					(status, output) = commands.getstatusoutput(cmd)
 					logfile = os.path.join(results_subfolder, 'Minimap2_r2c.log')
 					with open(logfile, 'w') as lfile:
 						lfile.write(output)
-
 
 				#3E Run Ezra scaffolding
 				if os.path.exists(resultfile):
@@ -210,7 +215,8 @@ def scaffold_with_plan(contigsfile, readsfile, paramdict, resultsfolder = None, 
 				else:
 					# Need to add '/' to Ezra run folder
 					# TODO: include this into run_ezra function
-					cmd = '%s %s > %s' % (EZRA, results_subfolder + '/', resultfile)
+					# ezra -r reads_NCTC10384.fastq -c rala_contigs_NCTC10384.fasta -o r2c_overlaps_NCTC10384.paf -m > ezra_test_MT2.fasta
+					cmd = '%s -r %s -c %s -o %s %s > %s' % (EZRA, readsfile, temp_contigs_file, reads2contigs_file, default_Eoptions, resultfile)
 					sys.stderr.write('\nRUNNING COMMAND: %s' % cmd)
 					(status, output) = commands.getstatusoutput(cmd)
 					logfile = os.path.join(results_subfolder, 'Ezra_i%0d.log' % iteration)
@@ -305,7 +311,7 @@ def scaffold_with_plan(contigsfile, readsfile, paramdict, resultsfolder = None, 
 	# Final result is in the temp_contigs_file
 	# Copy it to the root results folder!
 	resultsfile = os.path.join(resultsfolder_path, "scara_scaffolds_final.fasta")
-	os.shutil.copy(temp_contigs_file, resultsfile)
+	shutil.copy(temp_contigs_file, resultsfile)
 
 	return True
 

@@ -149,7 +149,7 @@ def scaffold_with_plan(contigsfile, readsfile, paramdict, resultsfolder = None, 
 			logfile = os.path.join(resultsfolder_path, 'Minimap2_r2c.log')
 
 			# Run racon
-			cmd = '%s %s %s %s %s > %s' % (RACON, reads_file, reads2contigs_file, contigs_file, default_Roptions, racon_file)
+			cmd = '%s %s %s %s %s > %s' % (RACON, default_Roptions, reads_file, reads2contigs_file, contigs_file, racon_file)
 			sys.stderr.write('\nRUNNING COMMAND: %s' % cmd)
 			(status, output) = commands.getstatusoutput(cmd)
 			logfile = os.path.join(resultsfolder_path, 'Racon_initial.log')
@@ -277,7 +277,7 @@ def scaffold_with_plan(contigsfile, readsfile, paramdict, resultsfolder = None, 
 						logfile = os.path.join(results_subfolder, 'Minimap2_r2c.log')
 
 						# Run racon
-						cmd = '%s %s %s %s > %s' % (RACON, reads_file, reads2contigs_file, temp_contigs_file, racon_file)
+						cmd = '%s %s %s %s %s > %s' % (RACON, default_Roptions, reads_file, reads2contigs_file, temp_contigs_file, racon_file)
 						sys.stderr.write('\nRUNNING COMMAND: %s' % cmd)
 						(status, output) = commands.getstatusoutput(cmd)
 						logfile = os.path.join(results_subfolder, 'Racon_I%0d.log' % (iteration - 1))
@@ -301,7 +301,7 @@ def scaffold_with_plan(contigsfile, readsfile, paramdict, resultsfolder = None, 
 			logfile = os.path.join(results_subfolder, 'Minimap2_r2c.log')
 
 			# Run racon
-			cmd = '%s %s %s %s > %s' % (RACON, reads_file, reads2contigs_file, temp_contigs_file, racon_file)
+			cmd = '%s %s %s %s %s > %s' % (RACON, default_Roptions, reads_file, reads2contigs_file, temp_contigs_file, racon_file)
 			sys.stderr.write('\nRUNNING COMMAND: %s' % cmd)
 			(status, output) = commands.getstatusoutput(cmd)
 			logfile = os.path.join(results_subfolder, 'Racon_final.log')
@@ -342,7 +342,7 @@ def scaffolding_script(contigsfile, readsfile, paramdict):
 
 
 def verbose_usage_and_exit():
-    sys.stderr.write('scaffolder - scaffold based on EZRA and HERA algorithms.\n')
+    sys.stderr.write('\nScaRa - A scaffolder based on EZRA and HERA algorithms.\n')
     sys.stderr.write('\n')
     sys.stderr.write('Usage:\n')
     sys.stderr.write('\t%s [contigs file] [reads file] options\n' % sys.argv[0])

@@ -426,18 +426,20 @@ def load_rr_overlaps_part(proc_id, rr_paf_lines_part, readnodes, out_q):
             edge1.startNode = rnode1
             edge1.endNode = rnode2
             # rnode1.outEdges.append(edge1)
-            t_edges = []
             if qname in readnodes_part:
                 t_edges = readnodes_part[qname]
+            else:
+                t_edges = []
             t_edges.append(edge1)
             readnodes_part[qname] = t_edges
 
             edge2.startNode = rnode2
             edge2.endNode = rnode1
             # rnode2.outEdges.append(edge2)
-            t_edges = []
             if tname in readnodes_part:
                 t_edges = readnodes_part[tname]
+            else:
+                t_edges = []
             t_edges.append(edge2)
             readnodes_part[tname] = t_edges
 

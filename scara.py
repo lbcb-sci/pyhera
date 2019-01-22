@@ -167,7 +167,7 @@ def scaffold_with_plan(contigsfile, readsfile, paramdict, resultsfolder = None, 
         # that are not contained within contigs
         old_readsfile = readsfile
         fname, fext = os.path.splitext(old_readsfile)
-        readsfile = os.path.join(resultsfolder_path, 'reads_processed.fastq')
+        readsfile = os.path.join(resultsfolder_path, 'reads_processed' + fext)
         [headers, seqs, quals] = read_fastq(old_readsfile)
         with open(readsfile, 'w') as rfile:
             for i in xrange(len(headers)):
@@ -182,9 +182,9 @@ def scaffold_with_plan(contigsfile, readsfile, paramdict, resultsfolder = None, 
                 else:
                     fheader = header
                 if fheader not in contained_reads:
-                    if fext.lower() in ['.FA', '.FASTA']:
+                    if fext.upper() in ['.FA', '.FASTA']:
                         rfile.write('>%s\n%s\n' % (header, seq))
-                    elif fext.lower() in ['.FQ', '.FASTQ']:
+                    elif fext.upper() in ['.FQ', '.FASTQ']:
                         rfile.write('@%s\n%s\n+%s\n%s\n' % (header, seq, '', qual))
                     else:
                         sys.stderr.write('\n\nERROR: invalid reads filename: %s' % old_readsfile)

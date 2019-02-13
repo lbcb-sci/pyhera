@@ -1,0 +1,3 @@
+// the configured options and settings for the project
+#define ScaRa_VERSION_MAJOR @ScaRa_VERSION_MAJOR@
+#define ScaRa_VERSION_MINOR @ScaRa_VERSION_MINOR@

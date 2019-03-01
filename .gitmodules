@@ -10,3 +10,6 @@
 [submodule "racon"]
 	path = racon
 	url = https://github.com/isovic/racon.git
+[submodule "vendor/bioparser"]
+	path = vendor/bioparser
+	url = https://github.com/rvaser/bioparser.git

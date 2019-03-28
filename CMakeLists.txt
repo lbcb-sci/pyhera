@@ -34,5 +34,6 @@ add_executable(scara ${SOURCE_FILES})
 
 # Adding bioparser
 add_subdirectory(ezra/vendor/bioparser EXCLUDE_FROM_ALL)
+add_subdirectory(vendor/thread_pool)
 # target_link_libraries(scara bioparser sbridger loader overlap sequence)
-target_link_libraries(scara bioparser)
+target_link_libraries(scara bioparser thread_pool)

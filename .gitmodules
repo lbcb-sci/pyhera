@@ -13,3 +13,9 @@
 [submodule "vendor/bioparser"]
 	path = vendor/bioparser
 	url = https://github.com/rvaser/bioparser.git
+[submodule "vendor/threadpool"]
+	path = vendor/threadpool
+	url = https://github.com/rvaser/thread_pool.git
+[submodule "vendor/thread_pool"]
+	path = vendor/thread_pool
+	url = https://github.com/rvaser/thread_pool.git

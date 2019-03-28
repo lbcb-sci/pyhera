@@ -1,5 +1,6 @@
 #include <stdexcept>
 #include <string>
+#include <math.h>
 
 #include "Graph.h"
 #include "Overlap.h"
@@ -316,9 +317,16 @@ namespace scara {
   	if (edges.size() > 0) {
   		for (int i = edges.size()-1; i >= 0; i--) {
   			shared_ptr<Edge> edge = edges[i];
-  			shared_ptr<Edge> newEdge = make_shared<Edge>(edge->startNodeName, edge->startNode
-  														, edge->endNodeName, edge->endNode, edge->ovl_ptr);
-  			newEdge->reverseNodes();
+  			shared_ptr<Edge> newEdge;
+        if (edge->reversed) {
+          newEdge = make_shared<Edge>(edge->endNodeName, edge->endNode                  // If the edge is already reversed, create nonreversed version
+  														, edge->startNodeName, edge->startNode, edge->ovl_ptr);   // by switching start and end nodes (and do not reverse it)
+        }
+        else {
+          newEdge = make_shared<Edge>(edge->startNodeName, edge->startNode              // if the edgee is not reversed, create a noraml version and reverse it
+                              , edge->endNodeName, edge->endNode, edge->ovl_ptr);
+ 			    newEdge->reverseNodes();
+        }
   			newPath->appendEdge(newEdge);
   		}
   	}
@@ -330,6 +338,8 @@ namespace scara {
   PathInfo::PathInfo(shared_ptr<Path> t_path_ptr) : path_ptr(t_path_ptr)
   {
   	length = avgSI = 0.0;
+    length2 = 0;
+    uint32_t negativeEScount = 0;
   	uint32_t SNlen, SNbegin, SNend;
   	uint32_t ENlen, ENbegin, ENend;
 
@@ -367,14 +377,54 @@ namespace scara {
 	  		}
 	  		// For each edge, add to the length of the path part of the end node that 
 	  		// does not overlap with the start node (End overhang - start overhang)
-	  		length += (ENlen - ENend) - (SNlen - SNend);
+        if (pathDir == D_RIGHT) {
+	  		  length += (ENlen - ENend) - (SNlen - SNend);
+          if (SNbegin <= ENbegin) negativeEScount++;
+          length2 += SNbegin - ENbegin;
+        }
+        else {
+          length += ENbegin - SNbegin;
+          if (ENbegin <= SNbegin) negativeEScount++;
+          length2 += (SNlen - SNend) - (ENlen - ENend);
+        }
 	  	}
+      length2 += ENlen;
 	  	avgSI /= t_path_ptr->edges.size();
-	}
-	else {
-		numNodes = 0;
-		startNodeName = "";
-		endNodeName = "";
-	}
+      if (negativeEScount > 0) 
+        throw std::runtime_error(std::string("SCARA BRIDGER: ERROR - path with negative extensions (" + std::to_string(negativeEScount) + ") SN(" + startNodeName + ") EN(" + endNodeName + ")"));
+  	}
+  	else {
+  		numNodes = 0;
+  		startNodeName = "";
+  		endNodeName = "";
+  	}
   }
+
+  PathGroup::PathGroup() : startNodeName(""), endNodeName(""), length(0.0), numPaths(0)
+  {
+  }
+
+  PathGroup::PathGroup(std::string t_startNodeName, std::string t_endNodeName, double t_length
+    ) : startNodeName(t_startNodeName), endNodeName(t_endNodeName), length(t_length), numPaths(0)
+  {
+  }
+  
+
+  PathGroup::PathGroup(shared_ptr<PathInfo> pinfo_ptr
+    ) : startNodeName(pinfo_ptr->startNodeName), endNodeName(pinfo_ptr->endNodeName), length(pinfo_ptr->length), numPaths(1)
+  {
+    vPathInfos.emplace_back(pinfo_ptr);
+  }
+
+  bool PathGroup::addPathInfo(shared_ptr<PathInfo> pinfo_ptr) {
+    if ((pinfo_ptr->startNodeName.compare(startNodeName) != 0) ||
+        (pinfo_ptr->endNodeName.compare(endNodeName) != 0) ||
+        (fabs(pinfo_ptr->length - length) > scara::pathGroupHalfSize)) return false;
+
+    vPathInfos.emplace_back(pinfo_ptr);
+    numPaths += 1;
+    return true;
+
+  }
+
 }

@@ -4,10 +4,10 @@
 namespace scara {
 
   char _bioBaseComplement(char c) {
-    if (c == 'A') return 'T';
-    if (c == 'T') return 'A';
-    if (c == 'G') return 'C';
-    if (c == 'C') return 'G';
+    if ((c == 'A') || c == 'a') return 'T';
+    if ((c == 'T') || c == 't') return 'A';
+    if ((c == 'G') || c == 'g') return 'C';
+    if ((c == 'C') || c == 'c') return 'G';
 
     return c;
   }

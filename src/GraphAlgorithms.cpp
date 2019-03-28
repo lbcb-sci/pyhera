@@ -17,10 +17,26 @@ namespace scara {
   extern int multithreading;
 
 
-  // PLACEHOLDER
-  bool checkPath(Path path) {
-  	uint32_t size = path.size();
-  	return (size > 0);
+  // Checking if a Path is consistent
+  // Checks if the path maintains direction along all edges and 
+  // Checks if adjecent edges share the same node
+  // returns 0 if the path is consistent
+  int checkPath(shared_ptr<Path> path_ptr) {
+  	if (path_ptr->edges.size() > 0) {
+      shared_ptr<Edge> firstedge = path_ptr->edges.front();
+      Direction dir = D_LEFT;
+      if (firstedge->QES1 < firstedge->QES2) dir = D_RIGHT;
+      for (uint32_t i = 1; i < path_ptr->edges.size(); i++) {
+      	shared_ptr<Edge> edge = path_ptr->edges[i];
+        Direction dir2 = D_LEFT;
+        if (edge->QES1 < edge->QES2) dir2 = D_RIGHT;
+        if (dir != dir2) return 1;
+        if (firstedge->endNode != edge->startNode) return 2;
+        firstedge = edge;
+      }
+    }
+
+    return 0;
   }
 
 
@@ -114,7 +130,7 @@ namespace scara {
             while (!eStack.empty()) {
                 std::shared_ptr<Edge> redge_ptr = eStack.top();                    // Pop an edge from the stack
                 eStack.pop();
-                if (redge_ptr == NULL) throw std::runtime_error(std::string("NULL poiter edge on the DFS stack!"));
+                if (redge_ptr == NULL) throw std::runtime_error(std::string("NULL pointer edge on the DFS stack!"));
                 std::shared_ptr<Node> rnode_ptr = redge_ptr->endNode;              // And the corresponding node
 
                 // Check if the node from the stack can continue the current path
@@ -203,12 +219,11 @@ namespace scara {
   int generatePaths_MC(std::vector<shared_ptr<Path>> &vPaths, MapIdToNode &aNodes, int minNumPaths) {
   	int pathsGenerated = 0;
 
-  	/* Each used can only be used once
+  	/* Each read can only be used once in a path!
   	 * TODO:
   	 * Currently placing read names in a set
   	 * It might be more efficient if Node pointers were used!
   	 */
-  	std::set<std::string> readsUsed;		// It seems questionable if this should be used with MC
   	int maxIterations = scara::maxMCIterations;
   	int iteration = 0;
   	int numNodes = scara::numDFSNodes;
@@ -220,7 +235,7 @@ namespace scara {
   	std::vector<shared_ptr<Node>> vANodes;						// A vector for faster random Node access
   	for (auto const& itANode : aNodes) vANodes.emplace_back(itANode.second);
 
-  	while (pathsGenerated < 2*minNumPaths && iteration < maxIterations) {
+  	while (pathsGenerated < minNumPaths && iteration < maxIterations) {
   		iteration += 1;
 
   		// Randomly choose an anchor Node
@@ -270,7 +285,8 @@ namespace scara {
          * - If not,randomly generate a number of connected read nodes with the probability of generation
          *   proportional to ES and place them on the stack
          * - If no reads are available, adjust the path and continue
-         */ 
+         */
+        std::set<std::string> readsUsed;		// A read cannot be used more than once within the same path
         while (!eStack.empty()) {
             std::shared_ptr<Edge> redge_ptr = eStack.top();                    // Pop an edge from the stack
             eStack.pop();

@@ -58,7 +58,8 @@ namespace scara {
     std::shared_ptr<Node> endNode;
     std::shared_ptr<Overlap> ovl_ptr;
 
-    bool reversed;
+    bool reversed;		// If the Edge is not reversed, startNode is Query and endNode is Target
+    					// If the Edge is reversed, its the opposite
 
     uint32_t QOH1;		// Query left overhang
     uint32_t QOH2;		// Query right overhang
@@ -144,7 +145,7 @@ namespace scara {
   /* KK:
    * Functions for algorithms on the graph
    */
-  bool checkPath(Path path);
+  int checkPath(shared_ptr<Path> path);
 
   int generatePathsDeterministic(std::vector<shared_ptr<Path>> &vPaths, MapIdToNode &aNodes, PathGenerationType pgType);
   int generatePaths_MC(std::vector<shared_ptr<Path>> &vPaths, MapIdToNode &aNodes, int minNumPaths);
@@ -159,6 +160,7 @@ namespace scara {
   	Direction pathDir;
   	uint32_t numNodes;
   	double length;
+  	uint32_t length2;
   	double avgSI;
   	shared_ptr<Path> path_ptr;
 
@@ -169,9 +171,16 @@ namespace scara {
   public:
   	std::string startNodeName;
   	std::string endNodeName;
+  	// A representative length for the group, currently is set to the length of the first path in the group
+  	// but could later be changed into something like average length of the paths in the group or some other 
+  	// appropriate measure
+  	double length;
+  	uint32_t numPaths;
   	std::vector<shared_ptr<PathInfo>> vPathInfos;
 
   	PathGroup();
-  	void AddPathInfo(shared_ptr<PathInfo> pinfo_ptr);
+  	PathGroup(std::string t_startNodeName, std::string t_endNodeName, double t_length);
+  	PathGroup(shared_ptr<PathInfo> pathinfo_ptr);
+  	bool addPathInfo(shared_ptr<PathInfo> pinfo_ptr);
   };
 }

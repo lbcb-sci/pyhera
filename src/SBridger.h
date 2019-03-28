@@ -1,5 +1,7 @@
 #include "Types.h"
 #include "Graph.h"
+#include "Overlap.h"
+#include "Loader.h"
 #include <string>
 
 namespace scara {
@@ -40,6 +42,12 @@ namespace scara {
 	  	// Path info vector, for faster analysis
 	  	std::vector<shared_ptr<PathInfo>> vPathInfos;
 
+	  	// Path group vector, for faster analysis
+	  	std::vector<shared_ptr<PathGroup>> vPathGroups;
+
+	  	// Final scaffolds
+	  	std::vector<shared_ptr<std::vector<shared_ptr<PathInfo>>>> scaffolds;
+
 
 	public:
 		int bGraphCreated;
@@ -68,6 +76,9 @@ namespace scara {
 	  	int generateSequences(void);
 
 	  	void Execute(void);
+
+	private:
+		shared_ptr<PathInfo> getBestPath_AvgSI();
 	};
 
 }

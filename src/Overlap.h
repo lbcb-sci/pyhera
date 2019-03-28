@@ -6,12 +6,20 @@
 
 namespace scara {
 
+  enum SequenceStrand {
+    SS_INVALID = 0,
+    SS_FORWARD = 1 << 0,
+    SS_REVERSE = 1 << 1
+  };
+
   enum OverlapType {
     ET_INVALID = 0,
     ET_PREFIX = 1 << 0,
     ET_SUFFIX = 1 << 1,
     ET_CONTAINED = 1 << 2
   };
+
+  extern SequenceStrand reverseStrand(SequenceStrand strand);
 
   extern OverlapType GetOtherExtension(OverlapType oType);
 

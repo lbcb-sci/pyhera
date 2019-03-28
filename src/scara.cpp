@@ -30,6 +30,9 @@ float SImin, OHmax;
 
 bool test_short_length, test_contained_reads, test_low_quality;
 bool print_output;
+double pathGroupHalfSize;
+
+DebugLevel globalDebugLevel;
 }
 
 
@@ -48,7 +51,7 @@ void setGlobalParameters() {
   scara::SoftNodeLimit = 100;
 
   // A number of nodes added to the stack in each step of DFS graph traversal
-  scara::numDFSNodes = 10;
+  scara::numDFSNodes = 5;
   // Maximum number of iterations using Monte Carlo approach
   scara::maxMCIterations = 10000;
 
@@ -64,6 +67,13 @@ void setGlobalParameters() {
   // Determines if more verbose messages are printed
   // TODO: replace this with DEBUG_LEVEL with multiple levels
   scara::print_output = true;
+
+  // A path is placed in a group if its length falls within pathGtoupHalfSize of groups representative length
+  scara::pathGroupHalfSize = 1000;
+
+  // Setting default Debugg level
+  scara::globalDebugLevel = DL_DEBUG;
+
 
 }
 

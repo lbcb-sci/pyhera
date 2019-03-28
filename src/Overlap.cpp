@@ -3,6 +3,13 @@
 
 namespace scara {
 
+
+	SequenceStrand reverseStrand(SequenceStrand strand) {
+		if (strand == SS_FORWARD) return SS_REVERSE;
+		else if (strand == SS_REVERSE) return SS_FORWARD;
+		else return strand;
+	}
+
   std::string StringFromOverlapType(OverlapType eType) {
     if (eType == ET_PREFIX) return "EXT_PREFIX";
     if (eType == ET_SUFFIX) return "EXT_SUFFIX";

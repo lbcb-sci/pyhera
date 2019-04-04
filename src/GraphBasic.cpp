@@ -42,22 +42,63 @@ namespace scara {
   	}
   }
 
+  Direction oppositeDirection(Direction dir) {
+    switch (dir) {
+      case (D_LEFT):
+        return D_RIGHT;
+        break;
+      case (D_RIGHT):
+        return D_LEFT;
+        break;
+      default:
+        return D_LEFT;    // KK: Should probably be changed to raise some sort of exception
+    }
+  }
+
 
   Node::Node(NodeType i_nType, std::string i_nName, std::shared_ptr<Sequence> i_seq_ptr
-  ) : nType(i_nType), nName(i_nName), seq_ptr(i_seq_ptr)
+  ) : nType(i_nType), nName(i_nName), seq_ptr(i_seq_ptr), isReverseComplement(false)
   {
+  }
+
+  Node::Node(NodeType i_nType, std::string i_nName, std::shared_ptr<Sequence> i_seq_ptr, bool i_isRC
+  ) : nType(i_nType), nName(i_nName), seq_ptr(i_seq_ptr), isReverseComplement(i_isRC)
+  {
+  	if (isReverseComplement) {
+  		nName += "_RC";
+  	}
   }
 
   Node::Node(std::shared_ptr<Sequence> i_seq_ptr, NodeType i_nType
-  ) : nType(i_nType), nName(i_seq_ptr->seq_strName), seq_ptr(i_seq_ptr)
+  ) : nType(i_nType), nName(i_seq_ptr->seq_strName), seq_ptr(i_seq_ptr), isReverseComplement(false)
   {
   }
 
-  Node::Node(NodeType i_nType, std::string i_nName, std::shared_ptr<Sequence> i_seq_ptr, std::vector<std::shared_ptr<Edge>> i_vOutEdges
-  ) : nType(i_nType), nName(i_nName), seq_ptr(i_seq_ptr)
+  Node::Node(std::shared_ptr<Sequence> i_seq_ptr, NodeType i_nType, bool i_isRC
+  ) : nType(i_nType), nName(i_seq_ptr->seq_strName), seq_ptr(i_seq_ptr), isReverseComplement(i_isRC)
+  {
+  	if (isReverseComplement) {
+  		nName += "_RC";
+  	}
+  }
+
+  Node::Node(NodeType i_nType, std::string i_nName, std::shared_ptr<Sequence> i_seq_ptr, std::vector<std::shared_ptr<Edge>> &i_vOutEdges
+  ) : nType(i_nType), nName(i_nName), seq_ptr(i_seq_ptr), isReverseComplement(false)
   {
   	for (auto const& edge_ptr : i_vOutEdges) {
   		vOutEdges.emplace_back(std::move(edge_ptr));
+  	}
+  }
+
+  Node::Node(NodeType i_nType, std::string i_nName, std::shared_ptr<Sequence> i_seq_ptr, std::vector<std::shared_ptr<Edge>> &i_vOutEdges, bool i_isRC
+  ) : nType(i_nType), nName(i_nName), seq_ptr(i_seq_ptr), isReverseComplement(i_isRC)
+  {
+  	for (auto const& edge_ptr : i_vOutEdges) {
+  		vOutEdges.emplace_back(std::move(edge_ptr));
+  	}
+
+  	if (isReverseComplement) {
+  		nName += "_RC";
   	}
   }
 
@@ -157,7 +198,7 @@ namespace scara {
   }
 
 
-  // Reverses the nodes in a edsge+++ge
+  // Reverses the nodes in an edge
   void Edge::reverseNodes(void) {
   	std::swap(startNodeName, endNodeName);
   	std::shared_ptr<Node> tempNodePtr = startNode;
@@ -255,6 +296,135 @@ namespace scara {
   	return true;
   }
 
+
+  // KK: Since the architecture of the graph has been changed, we need to create 4 edges for each overlap
+  // We have 2 nodes for each sequence (FW and RC), and need to create edges in both directions but only 
+  // For appropriate node combinations
+  // Example:
+  // 1. if we have overlap between seq1 and seq2, on the same strand (relative strand from PAF = '+')
+  // Then we need to create edges for nodes Seq1 and Seq2 (both directions), and for nodes Seq1_RC and Seq2_RC (both directions)
+  // 2. if we have overlap between seq1 and seq2, on different strand (relative strand from PAF = '-')
+  // Then we need to create edges for nodes Seq1 and Seq2_RC (both directions), and for nodes Seq1_RC and Seq2 (both directions)
+  void createEdgesFromOverlap(std::shared_ptr<Overlap> ovl_ptr, MapIdToNode& mAnchorNodes, MapIdToNode& mReadNodes, std::vector<shared_ptr<Edge>> &vEdges) {
+
+	// startNodeName(i_ovl_ptr->ext_strName), endNodeName(i_ovl_ptr->ext_strTarget), ovl_ptr(i_ovl_ptr)
+
+  	std::string startNodeName = ovl_ptr->ext_strName;
+  	std::string startNodeName_RC = ovl_ptr->ext_strName + "_RC";
+  	std::string endNodeName = ovl_ptr->ext_strTarget;
+  	std::string endNodeName_RC = ovl_ptr->ext_strTarget + "_RC";
+  	std::shared_ptr<Node> startNode, startNode_RC, endNode, endNode_RC;
+
+  	// KK: The assumption is that all of the nodes are already loaded
+  	// We are adding pointers to start and end node to each edge
+  	MapIdToNode::iterator it;
+
+  	// Look for START node in Anchor nodes
+  	it = mAnchorNodes.find(startNodeName);
+  	if (it != mAnchorNodes.end()) {
+  		startNode = it->second;
+  	}
+  	else {		// Now look in Read nodes
+  		it = mReadNodes.find(startNodeName);
+  		if (it != mReadNodes.end()) {
+  			startNode = it->second;
+  		}
+  		else {
+  			throw std::runtime_error(std::string("Error loading graph edges. Unknown node: ") + startNodeName);
+  		}
+  	}
+
+  	// Look for START node REVERSE COMPLEMENT in Anchor nodes
+  	it = mAnchorNodes.find(startNodeName_RC);
+  	if (it != mAnchorNodes.end()) {
+  		startNode_RC = it->second;
+  	}
+  	else {		// Now look in Read nodes
+  		it = mReadNodes.find(startNodeName_RC);
+  		if (it != mReadNodes.end()) {
+  			startNode_RC = it->second;
+  		}
+  		else {
+  			throw std::runtime_error(std::string("Error loading graph edges. Unknown node: ") + startNodeName_RC);
+  		}
+  	}
+
+  	// Look for END node in Anchor nodes
+  	it = mAnchorNodes.find(endNodeName);
+  	if (it != mAnchorNodes.end()) {
+  		endNode = it->second;
+  	}
+  	else {		// Now look in Read nodes
+  		it = mReadNodes.find(endNodeName);
+  		if (it != mReadNodes.end()) {
+  			endNode = it->second;
+  		}
+  		else {
+  			throw std::runtime_error(std::string("Error loading graph edges. Unknown node: ") + endNodeName);
+  		}
+  	}
+
+  	// Look for END node REVERSE COMPLEMENT in Anchor nodes
+  	it = mAnchorNodes.find(endNodeName_RC);
+  	if (it != mAnchorNodes.end()) {
+  		endNode_RC = it->second;
+  	}
+  	else {		// Now look in Read nodes
+  		it = mReadNodes.find(endNodeName_RC);
+  		if (it != mReadNodes.end()) {
+  			endNode_RC = it->second;
+  		}
+  		else {
+  			throw std::runtime_error(std::string("Error loading graph edges. Unknown node: ") + endNodeName_RC);
+  		}
+  	}
+
+  	// Checking relative strand
+  	if (ovl_ptr->ext_bOrientation == true) {
+  		// Same strand ('+')
+  		// Create edge for FW strand
+  		auto edge_ptr = make_shared<Edge>(startNodeName, startNode, endNodeName, endNode, ovl_ptr);
+  		vEdges.emplace_back(edge_ptr);
+
+		// Creating the second Edge in the opposite direction (still FW strand)
+		auto edge_ptr2 = make_shared<Edge>(startNodeName, startNode, endNodeName, endNode, ovl_ptr);
+		edge_ptr2->reverseNodes();
+		vEdges.emplace_back(edge_ptr2);
+
+		// Create edge for RC strand
+		auto edge_ptr3 = make_shared<Edge>(startNodeName_RC, startNode_RC, endNodeName_RC, endNode_RC, ovl_ptr);
+  		vEdges.emplace_back(edge_ptr3);
+
+		// Creating the second Edge in the opposite direction (for RC strand)
+		auto edge_ptr4 = make_shared<Edge>(startNodeName_RC, startNode_RC, endNodeName_RC, endNode_RC, ovl_ptr);
+		edge_ptr4->reverseNodes();
+		vEdges.emplace_back(edge_ptr4);
+  	}
+  	else {
+  		// Different strand ('-')
+  		// Create edge for FW strand
+  		auto edge_ptr = make_shared<Edge>(startNodeName, startNode, endNodeName_RC, endNode_RC, ovl_ptr);
+  		vEdges.emplace_back(edge_ptr);
+
+		// Creating the second Edge in the opposite direction (still FW strand)
+		auto edge_ptr2 = make_shared<Edge>(startNodeName, startNode, endNodeName_RC, endNode_RC, ovl_ptr);
+		edge_ptr2->reverseNodes();
+		vEdges.emplace_back(edge_ptr2);
+
+		// Create edge for RC strand
+		auto edge_ptr3 = make_shared<Edge>(startNodeName_RC, startNode_RC, endNodeName, endNode, ovl_ptr);
+  		vEdges.emplace_back(edge_ptr3);
+
+		// Creating the second Edge in the opposite direction (for RC strand)
+		auto edge_ptr4 = make_shared<Edge>(startNodeName_RC, startNode_RC, endNodeName, endNode, ovl_ptr);
+		edge_ptr4->reverseNodes();
+		vEdges.emplace_back(edge_ptr4);
+  	}
+
+  }
+
+
+
   Path::Path(std::shared_ptr<Edge> edge_ptr) :  edges()
   {
     edges.emplace_back(edge_ptr);
@@ -306,8 +476,10 @@ namespace scara {
   	}
   }
 
-  void Path::removeLastEdge(void){
+  std::shared_ptr<Edge> Path::removeLastEdge(void){
+    auto last_edge = edges.back();
   	edges.pop_back();
+    return last_edge;
   }
 
   // Return a reversed path, reverse order of edges and each edge
@@ -377,16 +549,20 @@ namespace scara {
 	  		}
 	  		// For each edge, add to the length of the path part of the end node that 
 	  		// does not overlap with the start node (End overhang - start overhang)
-        if (pathDir == D_RIGHT) {
-	  		  length += (ENlen - ENend) - (SNlen - SNend);
-          if (SNbegin <= ENbegin) negativeEScount++;
-          length2 += SNbegin - ENbegin;
-        }
-        else {
-          length += ENbegin - SNbegin;
-          if (ENbegin <= SNbegin) negativeEScount++;
-          length2 += (SNlen - SNend) - (ENlen - ENend);
-        }
+	        if (pathDir == D_RIGHT) {
+		  		  length += (ENlen - ENend) - (SNlen - SNend);
+	          if (SNbegin <= ENbegin) {
+				  negativeEScount++;
+	          }
+	          length2 += SNbegin - ENbegin;
+	        }
+	        else {
+	          length += ENbegin - SNbegin;
+	          if (ENbegin <= SNbegin) {
+	            negativeEScount++;
+	       	  }
+	          length2 += (SNlen - SNend) - (ENlen - ENend);
+	        }
 	  	}
       length2 += ENlen;
 	  	avgSI /= t_path_ptr->edges.size();

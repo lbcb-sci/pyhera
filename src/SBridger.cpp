@@ -73,17 +73,27 @@ namespace scara {
 	 numAREdges_all = numAREdges_usable = numAREdges_contained = numAREdges_short = numAREdges_lowqual = numAREdges_zero = 0;
 	 numRREdges_all = numRREdges_usable = numRREdges_contained = numRREdges_short = numRREdges_lowqual = numRREdges_zero = 0;
 
-	// 1. Generate anchor nodes
+	// 1. Generate anchor nodes for each original contig and for reverse complement
 	for (auto const& it : mIdToContig) {
-		auto node_ptr = make_shared<Node>(it.second, NT_ANCHOR);
+		// Original contig
+		auto node_ptr = make_shared<Node>(it.second, NT_ANCHOR, false);
 		mAnchorNodes.emplace(it.first, node_ptr);
+
+		// Reverse complement
+		node_ptr = make_shared<Node>(it.second, NT_ANCHOR, true);
+		mAnchorNodes.emplace(it.first + "_RC", node_ptr);
 	}
 	numANodes = mAnchorNodes.size();
 
-	// 2. Generate read nodes
+	// 2. Generate read nodes for each read contig and for reverse complement
 	for (auto const& it : mIdToRead) {
-		auto node_ptr = make_shared<Node>(it.second, NT_READ);
+		// Original read
+		auto node_ptr = make_shared<Node>(it.second, NT_READ, false);
 		mReadNodes.emplace(it.first, node_ptr);
+
+		// Reverse complement
+		node_ptr = make_shared<Node>(it.second, NT_READ, true);
+		mReadNodes.emplace(it.first + "_RC", node_ptr);
 	}
 	numRNodes = mReadNodes.size();
 
@@ -91,34 +101,7 @@ namespace scara {
 	for (auto const& it1 : mIdToOvlR2C) {
 		for (auto const& it2 : it1.second) {
 			if (it2->Test()) {
-				auto edge_ptr = make_shared<Edge>(it2, mAnchorNodes, mReadNodes);
-				int test_val = edge_ptr->test();
-				switch (test_val) {
-					case (-1):
-						numAREdges_contained += 1;
-						break;
-					case (-2):
-						numAREdges_short += 1;
-						break;
-					case (-3):
-						numAREdges_lowqual += 1;
-						break;
-					case (-4):
-						numAREdges_zero += 1;
-						break;
-					default:
-						break;
-				}
-
-				if (test_val > 0) {
-					numAREdges_usable += 1;
-					vEdges.emplace_back(edge_ptr);
-
-					// Creating the second Edge in the opposite direction
-					auto edge_ptr2 = make_shared<Edge>(it2, mAnchorNodes, mReadNodes);
-					edge_ptr2->reverseNodes();
-					vEdges.emplace_back(edge_ptr2);
-				}
+				createEdgesFromOverlap(it2, mAnchorNodes, mReadNodes, vEdges);
 			}
 		}
 	}
@@ -126,45 +109,37 @@ namespace scara {
 	for (auto const& it1 : mIdToOvlR2R) {
 		for (auto const& it2 : it1.second) {
 			if (it2->Test()) {
-				auto edge_ptr = make_shared<Edge>(it2, mAnchorNodes, mReadNodes);
-				int test_val = edge_ptr->test();
-				switch (test_val) {
-					case (-1):
-						numRREdges_contained += 1;
-						break;
-					case (-2):
-						numRREdges_short += 1;
-						break;
-					case (-3):
-						numRREdges_lowqual += 1;
-						break;
-					case (-4):
-						numRREdges_zero += 1;
-						break;
-					default:
-						break;
-				}
-				if (test_val > 0) {
-					numRREdges_usable += 1;
-					vEdges.emplace_back(edge_ptr);
-
-					// Creating the second Edge in the opposite direction
-					auto edge_ptr2 = make_shared<Edge>(it2, mAnchorNodes, mReadNodes);
-					edge_ptr2->reverseNodes();
-					vEdges.emplace_back(edge_ptr2);
-				}
+				createEdgesFromOverlap(it2, mAnchorNodes, mReadNodes, vEdges);
 			}
 		}
 	}
 
 	// 3.1 Connect Edges to Nodes
-	for (auto const& edge : vEdges) {
-		std::shared_ptr<Node> startNode = edge->startNode;
-		std::shared_ptr<Node> endNode = edge->endNode;
-		startNode->vOutEdges.emplace_back(edge);
-		// KK: Creating two Edges per overlap, in both directions
-		// The fist one already exists, creating the second one now
-		// endNode->vOutEdges.emplace_back(edge);
+	for (auto const& edge_ptr : vEdges) {
+		// First test edges
+		int test_val = edge_ptr->test();
+		switch (test_val) {
+			case (-1):
+				numAREdges_contained += 1;
+				break;
+			case (-2):
+				numAREdges_short += 1;
+				break;
+			case (-3):
+				numAREdges_lowqual += 1;
+				break;
+			case (-4):
+				numAREdges_zero += 1;
+				break;
+			default:
+				break;
+		}
+		if (test_val > 0) {
+			// Add edge to outgoing edges for its startNode
+			std::shared_ptr<Node> startNode = edge_ptr->startNode;
+			std::shared_ptr<Node> endNode = edge_ptr->endNode;
+			startNode->vOutEdges.emplace_back(edge_ptr);
+		}
 	}
 
 	// 4. Filter nodes

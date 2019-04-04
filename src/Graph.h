@@ -31,6 +31,7 @@ namespace scara {
 
   std::string Direction2String(Direction dir);
 
+  Direction oppositeDirection(Direction dir);
 
   class Node {
   public:
@@ -38,13 +39,18 @@ namespace scara {
     std::string nName;
     std::shared_ptr<Sequence> seq_ptr;
 
+    bool isReverseComplement;
+
     std::vector<std::shared_ptr<Edge>> vOutEdges;
 
     Node(NodeType nType, std::string nName, std::shared_ptr<Sequence> seq_ptr);
+    Node(NodeType nType, std::string nName, std::shared_ptr<Sequence> seq_ptr, bool isRC);
 
     Node(std::shared_ptr<Sequence> seq, NodeType nType);
+    Node(std::shared_ptr<Sequence> seq, NodeType nType, bool isRC);
 
-    Node(NodeType nType, std::string nName, std::shared_ptr<Sequence> seq_ptr, std::vector<std::shared_ptr<Edge>> vOutEdges);
+    Node(NodeType nType, std::string nName, std::shared_ptr<Sequence> seq_ptr, std::vector<std::shared_ptr<Edge>> &vOutEdges);
+    Node(NodeType nType, std::string nName, std::shared_ptr<Sequence> seq_ptr, std::vector<std::shared_ptr<Edge>> &vOutEdges, bool isRC);
   };
 
   class Edge {
@@ -79,16 +85,24 @@ namespace scara {
 
     Edge(std::string startNodeName, std::shared_ptr<Node> startNode, std::string endNodeName, std::shared_ptr<Node> endNode, std::shared_ptr<Overlap> ovl_ptr);
 
-    Edge(std::shared_ptr<Overlap> ovl, MapIdToNode& mAnchorNodes, MapIdToNode& mReadNodes);
+    Edge(std::shared_ptr<Overlap> ovl_ptr, MapIdToNode& mAnchorNodes, MapIdToNode& mReadNodes);
 
-    Edge(std::shared_ptr<Overlap> ovl);
+    Edge(std::shared_ptr<Overlap> ovl_ptr);
 
     void reverseNodes(void);
 
     int test(void);
   };
 
-
+  // KK: Since the architecture of the graph has been changed, we need to create 4 edges for each overlap
+  // We have 2 nodes for each sequence (FW and RC), and need to create edges in both directions but only 
+  // For appropriate node combinations
+  // Example:
+  // 1. if we have overlap between seq1 and seq2, on the same strand (relative strand from PAF = '+')
+  // Then we need to create edges for nodes Seq1 and Seq2 (both directions), and for nodes Seq1_RC and Seq2_RC (both directions)
+  // 2. if we have overlap between seq1 and seq2, on different strand (relative strand from PAF = '-')
+  // Then we need to create edges for nodes Seq1 and Seq2_RC (both directions), and for nodes Seq1_RC and Seq2 (both directions)
+  void createEdgesFromOverlap(std::shared_ptr<Overlap> ovl_ptr, MapIdToNode& mAnchorNodes, MapIdToNode& mReadNodes, std::vector<shared_ptr<Edge>> &vEdges);
 
 
 
@@ -136,7 +150,7 @@ namespace scara {
     std::shared_ptr<Node> startNode(void);
 
     void appendEdge(std::shared_ptr<Edge> edge_ptr);
-    void removeLastEdge(void);
+    std::shared_ptr<Edge> removeLastEdge(void);
 
     shared_ptr<Path> reversedPath();
   };
@@ -149,6 +163,9 @@ namespace scara {
 
   int generatePathsDeterministic(std::vector<shared_ptr<Path>> &vPaths, MapIdToNode &aNodes, PathGenerationType pgType);
   int generatePaths_MC(std::vector<shared_ptr<Path>> &vPaths, MapIdToNode &aNodes, int minNumPaths);
+
+  int generatePathsForNode_MC(std::vector<shared_ptr<Path>> &vPaths, shared_ptr<Node> aNode, int minNumPaths, int maxNumIterations);
+
  
   shared_ptr<vector<shared_ptr<Edge>>> getBestNEdges(vector<shared_ptr<Edge>> &edges, uint32_t N, PathGenerationType pgType);
 

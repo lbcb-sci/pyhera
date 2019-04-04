@@ -109,7 +109,8 @@ namespace scara {
   			auto newPath = make_shared<Path>(edge_ptr);
   			std::stack<std::shared_ptr<Edge>> eStack;
 
-  			// Determine the direction of extension, which must be preserved throughout a path
+  			// Determine the direction of extension, which must be maintained throughout a path
+        // and if the reads that overlap are on different strands, direction must be switched
   			// IMPORTANT: we are always extending target with query, never query with target
   			//			   using appropriate extension scores
   			Direction dir = D_LEFT;
@@ -137,18 +138,23 @@ namespace scara {
                 if ((newPath->size() > 0) && (newPath->endNode() != redge_ptr->startNode)) {
                     // If not, put the edge back on the stack
                     eStack.push(redge_ptr);
-                    // And remove the last edge from the path
-                    newPath->removeLastEdge();
+                    // And remove the last edge from the path (switch direction if relative strand was '-')
+                    auto last_edge = newPath->removeLastEdge();
+                    if (last_edge->ovl_ptr->ext_bOrientation == false) dir = oppositeDirection(dir);
+
                     // Skip to next iteration
                     continue;
                 }
 
-                // Check if the path is too long skip this iteration and let
+                // Check if the path is too long, skip this iteration and let
                 // the above code eventually reduce the path
                 if (newPath->size() >= scara::HardNodeLimit) continue;
 
                 newPath->appendEdge(redge_ptr);                           // Add edge to the path
                 readsUsed.insert(rnode_ptr->nName);                       // And mark the node as traversed
+
+                // If the relative strand of the edge is '-', switch direction
+                if (redge_ptr->ovl_ptr->ext_bOrientation == false) dir = oppositeDirection(dir);
 
                 std::vector<shared_ptr<Edge>> Aedges;                                     // Edges to anchor nodes
                 std::vector<shared_ptr<Edge>> Redges;                                     // Edges to read nodes
@@ -188,19 +194,20 @@ namespace scara {
                 shared_ptr<vector<shared_ptr<Edge>>> bestRedges = getBestNEdges(Redges, numNodes, pgType2);
 
                 if (bestAedges->size() > 0u) {                                  // If anchor nodes have been reached find the best one
-                    shared_ptr<Edge> aedge = (*bestAedges)[0];					// Since we are using a priority queue, no nee to sort the elements
-                    newPath->appendEdge(aedge);									// Create a path and end this instance of tree traversal
+                    shared_ptr<Edge> aedge = (*bestAedges)[0];					// Since we are using a priority queue, no need to sort the elements
+                    newPath->appendEdge(aedge);									        // Create a path and end this instance of tree traversal
                     vPaths.emplace_back(newPath);
                     pathsGenerated++;
                     break;
                 } else if (bestRedges->size() > 0u) {                             // If no anchor nodes have been found we have to continue with read nodes
                 	uint32_t N = (numNodes < bestRedges->size() ? numNodes : bestRedges->size());
-                    for (int i=N-1; i>=0; i--) {								// Place N best edges on the stack in reverse order, so that the best one ends on top
+                    for (int i=N-1; i>=0; i--) {								                // Place N best edges on the stack in reverse order, so that the best one ends on top
                     	shared_ptr<Edge> t_edge = (*bestRedges)[i];
                     	eStack.push(t_edge);
                     }                    
                 } else {                                                       // Graph traversal has come to a dead end
-                    newPath->removeLastEdge();                                 // Remove the last edge from the path
+                    auto last_edge = newPath->removeLastEdge();                // Remove the last edge from the path and adjust direction if needed
+                    if (last_edge->ovl_ptr->ext_bOrientation == false) dir = oppositeDirection(dir);
                     std::set<std::string>::iterator it = readsUsed.find(rnode_ptr->nName);
                     readsUsed.erase(it);                         				// Remove current read node from the list of traversed ones
                 }
@@ -381,5 +388,169 @@ namespace scara {
 
   	if (scara::print_output) std::cerr << "\nFinished Monte Carlo with " << iteration << " iterations!";
   	return pathsGenerated;
+  }
+
+
+  /* Generate paths using Monte Carlo approach, with the probablity proportional to extension score.
+   * Doing this for a single anchor node!
+   */
+  int generatePathsForNode_MC(std::vector<shared_ptr<Path>> &vPaths, shared_ptr<Node> aNode, int minNumPaths, int maxNumIterations) {
+    uint32_t pathsGenerated = 0;
+    uint32_t iteration = 0;
+
+    /* Each read can only be used once in a path!
+     * TODO:
+     * Currently placing read names in a set
+     * It might be more efficient if Node pointers were used!
+     */
+    int maxIterations = maxNumIterations;
+    int numNodes = scara::numDFSNodes;
+
+    // Setting up random number generator
+    std::random_device rd;
+    std::default_random_engine generator{rd()};
+
+    while (pathsGenerated < minNumPaths && iteration < maxIterations) {
+      iteration += 1;
+
+      float totalES = 0.0;
+      for (auto const& edge_ptr : aNode->vOutEdges) {
+        float maxES = (edge_ptr->QES1 > edge_ptr->QES2) ? edge_ptr->QES1 : edge_ptr->QES2;
+        totalES += maxES;
+      }
+
+      // Generating real numbers to select an edge with probability proportional to Extension score
+      std::uniform_real_distribution<float> dist2{0, totalES};
+      float rndCumES = dist2(generator);
+      float cumulativeES = 0.0;
+      std::shared_ptr<Edge> chosen_edge_ptr;
+      for (auto const& edge_ptr : aNode->vOutEdges) {
+        float maxES = (edge_ptr->QES1 > edge_ptr->QES2) ? edge_ptr->QES1 : edge_ptr->QES2;
+        cumulativeES += maxES;
+        if (cumulativeES > rndCumES) {
+          chosen_edge_ptr = edge_ptr;
+          break;
+        }
+      }
+
+      // Initialize new path and stack for graph traversal
+      auto newPath = make_shared<Path>(chosen_edge_ptr);
+      std::stack<std::shared_ptr<Edge>> eStack;
+
+      // Determine the direction of extension, which must be maintained throughout a path
+      // IMPORTANT: if the reads that overlap are on different strands, direction must be switched
+      // IMPORTANT: we are always extending query with target, never viceversa
+      //         using appropriate extension scores
+      Direction dir = D_LEFT;
+      if (chosen_edge_ptr->QES1 < chosen_edge_ptr->QES2) dir = D_RIGHT;
+
+      // KK: Control, check if estension scores are greater than 0
+        if ((chosen_edge_ptr->QES2 <= 0) && (chosen_edge_ptr->QES1 <= 0)) continue;
+
+        eStack.push(chosen_edge_ptr);
+        /* For each inital node, place only its edge on the stack
+         * In each step of graph traversal:
+         * - Pop the last node
+         * - Check if it can connect to an anchor node
+         * - If it can, the path is complete
+         * - If not,randomly generate a number of connected read nodes with the probability of generation
+         *   proportional to ES and place them on the stack
+         * - If no reads are available, adjust the path and continue
+         */
+        std::set<std::string> readsUsed;    // A read cannot be used more than once within the same path
+        while (!eStack.empty()) {
+            std::shared_ptr<Edge> redge_ptr = eStack.top();                    // Pop an edge from the stack
+            eStack.pop();
+            std::shared_ptr<Node> rnode_ptr = redge_ptr->endNode;              // And the corresponding node
+
+            // Check if the node from the stack can continue the current path
+            if ((newPath->size() > 0) && (newPath->endNode() != redge_ptr->startNode)) {
+                // If not, put the edge back on the stack
+                eStack.push(redge_ptr);
+                // And remove the last edge from the path
+                newPath->removeLastEdge();
+                // Skip to next step
+                continue;
+            }
+
+            // Check if the path is too long skip this iteration and let
+            // the above code eventually reduce the path
+            if (newPath->size() >= scara::HardNodeLimit) continue;
+
+            newPath->appendEdge(redge_ptr);                           // Add edge to the path
+            readsUsed.insert(rnode_ptr->nName);                       // And mark the node as traversed
+
+            std::vector<shared_ptr<Edge>> Aedges;                                     // Edges to anchor nodes
+            std::vector<shared_ptr<Edge>> Redges;                                     // Edges to read nodes
+
+            for (auto const& edge2_ptr : rnode_ptr->vOutEdges) {
+                // KK: Control
+                if ((edge2_ptr->QES2 <= 0) && (edge2_ptr->QES1 <= 0)) continue;
+
+                shared_ptr<Node> endNode = edge2_ptr->endNode;
+                if (readsUsed.find(endNode->nName) != readsUsed.end())        // Each read can only be used once
+                    continue;
+                Direction dir2 = D_LEFT;
+                if (edge2_ptr->QES2 > edge2_ptr->QES1) dir2 = D_RIGHT;
+                if (dir2 != dir) continue;                // Direction of extension must be maintained                        
+
+                if (endNode->nType == NT_ANCHOR) {
+                    if (endNode->nName.compare(aNode->nName) != 0)             // We only want nodes that are different from the starting node!
+                        Aedges.emplace_back(edge2_ptr);                        // NOTE: this might change, as we might want scaffold circular genomes!
+                }
+                else if (endNode->nType == NT_READ)
+                    Redges.emplace_back(edge2_ptr);
+                else throw std::runtime_error(std::string("SCARA BRIDGER: ERROR - invalid node type: ") + scara::NodeType2String(endNode->nType));
+            }
+
+            PathGenerationType pgType = PGT_INVALID;
+            if (dir == D_LEFT) pgType = PGT_MAXESLEFT;
+            else pgType = PGT_MAXESRIGHT;
+
+            shared_ptr<vector<shared_ptr<Edge>>> bestAedges = getBestNEdges(Aedges, 1, pgType);
+            // shared_ptr<vector<shared_ptr<Edge>>> bestRedges = getBestNEdges(Redges, numNodes, pgType2);
+
+            if (bestAedges->size() > 0) {                                   // If anchor nodes have been reached find the best one
+                shared_ptr<Edge> aedge = (*bestAedges)[0];
+                newPath->appendEdge(aedge);                 // Create a path and end this instance of tree traversal
+                vPaths.emplace_back(newPath);
+                pathsGenerated++;
+                break;
+            } 
+
+            if (Redges.size() > 0) {                                  // If no anchor nodes have been found we have to continue with read nodes
+              float totalES = 0.0;
+          for (auto const& edge_ptr : Redges) {
+            float ES = (dir == D_LEFT) ? edge_ptr->QES1 : edge_ptr->QES2;
+            totalES += ES;
+          }
+
+          // Generating real numbers to select an edge with probability proportional to Extension score
+          // Do it numNodes times, it is possible to generate the same edge more than once
+          // Place each edge on the stack
+          std::uniform_real_distribution<float> dist2{0, totalES};
+              uint32_t N = (numNodes < Redges.size() ? numNodes : Redges.size());
+                for (uint32_t i=0; i<N; i++) {
+            float rndCumES = dist2(generator);
+                  float cumulativeES = 0.0;
+            std::shared_ptr<Edge> chosen_edge_ptr;
+            for (auto const& edge_ptr : Redges) {
+              float maxES = (edge_ptr->QES1 > edge_ptr->QES2) ? edge_ptr->QES1 : edge_ptr->QES2;
+              cumulativeES += maxES;
+              if (cumulativeES > rndCumES) {
+                eStack.push(edge_ptr);
+              }
+            }
+                }                    
+            } else {                                                       // Graph traversal has come to a dead end
+                newPath->removeLastEdge();                                 // Remove the last edge from the path
+                std::set<std::string>::iterator it = readsUsed.find(rnode_ptr->nName);
+                readsUsed.erase(it);                                // Remove current read node from the list of traversed ones
+            }
+        }
+    }
+
+    if (scara::print_output) std::cerr << "\nFinished Monte Carlo for node " << aNode->nName << " with " << iteration << " iterations!";
+    return pathsGenerated;
   }
 }

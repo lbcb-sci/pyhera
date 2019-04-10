@@ -518,8 +518,22 @@ namespace scara {
   	if (t_path_ptr->edges.size() > 0) {
   		numNodes = t_path_ptr->edges.size() + 1;
   		shared_ptr<Edge> firstEdge = t_path_ptr->edges.front();
+  		// KK: Path info will retain original names of start and end sequences
+  		// REMINDER: for each sequence two nodes are created, for FW and RC relative strand
+  		// Node name for RC nodes has "_RC" at the end
+  		// PathInfo object will will use original sequence names so that paths can be grouped
+  		// together for the same sequence, regardless if its original or RC version of the sequence
+  		std::string rc_suffix = "_RC";		// TODO: move this to global parameters
   		startNodeName = firstEdge->startNodeName;
+  		if (startNodeName.compare(startNodeName.size()-rc_suffix.size(), rc_suffix.size(), rc_suffix) == 0) {
+  			startNodeName.erase(startNodeName.size()-rc_suffix.size(), rc_suffix.size());
+  			// startNodeName = startNodeName.substr(0, startNodeName.size()-rc_suffix.size());
+  		}
   		endNodeName = t_path_ptr->edges.back()->endNodeName;
+  		if (endNodeName.compare(endNodeName.size()-rc_suffix.size(), rc_suffix.size(), rc_suffix) == 0) {
+  			endNodeName.erase(endNodeName.size()-rc_suffix.size(), rc_suffix.size());
+  			// endNodeName = endNodeName.substr(0, endNodeName.size()-rc_suffix.size());
+  		}
   		pathDir = D_LEFT;
   		if (firstEdge->QES1 < firstEdge->QES2) pathDir = D_RIGHT;
   		// Add the length of the first Node (start node of the first edge)
@@ -563,6 +577,9 @@ namespace scara {
 	       	  }
 	          length2 += (SNlen - SNend) - (ENlen - ENend);
 	        }
+	        // KK: If the overlapping sequences are on different strands (relative strand = '-')
+	        //     Switch direction for the following calculations
+	        if (!(edge->ovl_ptr->ext_bOrientation)) dir = oppositeDirection();
 	  	}
       length2 += ENlen;
 	  	avgSI /= t_path_ptr->edges.size();

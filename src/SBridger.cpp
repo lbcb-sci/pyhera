@@ -361,6 +361,7 @@ namespace scara {
    */
   int SBridger::generateSequences(void) {
   	int i = 0;
+  	std::set<std::string> usedContigs;
   	for (auto const&  vec_ptr: scaffolds) {
   		// bool fistContigUsed = false;
   		i++;
@@ -371,92 +372,126 @@ namespace scara {
 
   		uint32_t slength = 0;
 		uint32_t lastNodeLength;
-		Path scaffoldPath;
+		uint32_t numNodes = 1;
   		for (auto const& pinfo_ptr : (*vec_ptr)) {
-  			header += ' ' + pinfo_ptr->startNodeName;
+  			header += ' ' + pinfo_ptr->path_ptr->edges.front()->startNodeName;
   			slength += pinfo_ptr->length;
   			// Remove the length of the endNode (as not to be added twice)
   			auto lastEdge = pinfo_ptr->path_ptr->edges.back();
   			if (!lastEdge->reversed) lastNodeLength = lastEdge->ovl_ptr->ext_ulTLen;
   			else lastNodeLength = lastEdge->ovl_ptr->ext_ulQLen;
   			slength -= lastNodeLength;
+  			numNodes += pinfo_ptr->path_ptr->edges.size() - 1;
 
-  			// Construct a joint path from the edges of all paths in the scaffold
   			cerr << pinfo_ptr->path_ptr->edges.size() << " (" << pinfo_ptr->length << ") ";
-  			for (auto const& edge_ptr: pinfo_ptr->path_ptr->edges) scaffoldPath.appendEdge(edge_ptr);  
   		}
-  		header += ' ' + vec_ptr->back()->endNodeName;		// Add the last endNode
+  		header += ' ' + vec_ptr->back()->path_ptr->edges.back()->endNodeName;		// Add the last endNode
   		slength += lastNodeLength;		// For the last path, add the endNode length
-  		// uint32_t adjusted_slength = (uint32_t)(slength*1.05);		// Add 5%, just ot be sure we didnt miscalculate something
 
   		// Output the scaffold header to cout!
   		cerr << "SCARA generated header " << header << endl;
   		cout << header << endl;
 
-  		cerr << "SCARA generating sequence of length " << slength << " from " << scaffoldPath.edges.size() << " nodes!" << endl;
+  		cerr << "SCARA generating sequence of length " << slength << " from " << numNodes << " nodes!" << endl;
 
   		// Calculate scaffold sequence from scaffoldPath and output it to cout
   		// NOTE: Assuming direction RIGHT!
   		// TODO: for completion include generating sequences for direction LEFT
   		SequenceStrand strand = SS_FORWARD;
-  		for (auto const& edge_ptr : scaffoldPath.edges) {
-  			// Determine part of the startNode that will be put into the final sequence
-  			shared_ptr<Node> startNode = edge_ptr->startNode;
-  			uint32_t seq_part_start, seq_part_end, seq_part_size;
-  			std::string seq_part = "";
-  			if (!edge_ptr->reversed) {		// Edge is not reversed
-  				seq_part_start = 0;
-  				seq_part_end = edge_ptr->ovl_ptr->ext_ulQBegin - edge_ptr->ovl_ptr->ext_ulTBegin;  				
-  			}
-  			else {							// Edge is reversed
-  				seq_part_start = 0;
-  				seq_part_end = edge_ptr->ovl_ptr->ext_ulTBegin - edge_ptr->ovl_ptr->ext_ulQBegin;
-  			}
-  			seq_part_size = seq_part_end - seq_part_start;
-  			if (seq_part_size <= 0) {
-  				throw std::runtime_error(std::string("SCARA BRIDGER: ERROR - invalid sequence part size: "));
-  			}
-  			seq_part.reserve(seq_part_size + 10);		// adding 10 just to avoid missing something by 1
-  			if (strand == SS_FORWARD) {
-  				// Copy relevant part of the string
-  				int k=0;
-  				for (; k<seq_part_size; k++) {
-  					seq_part += (startNode->seq_ptr->seq_strData)[seq_part_start+k];
-  				}
-  				// seq_part[k] = '\0';
-  			} else if (strand == SS_REVERSE) {
-  				// Copy relevant part of the string
-  				// If the strand is reverse, go from the end of the string and rev
-  				int k=0;
-  				for (; k<seq_part_size; k++) {
-  					uint32_t seq_end = (startNode->seq_ptr->seq_strData).length();
-  					seq_part += _bioBaseComplement((startNode->seq_ptr->seq_strData)[seq_end-k-1]);
-  				}
-  				// seq_part[k] = '\0';
-  			} else {
-  				throw std::runtime_error(std::string("SCARA BRIDGER: ERROR - invalid strand type: "));
-  			}
-  			// Output the sequence part to the standard output
-  			cerr << "SCARA BRIDGER: Printing node " << startNode->nName << " with length " << seq_part_size << " - ";
-  			cerr << seq_part.length() << "/" << startNode->seq_ptr->seq_strData.length();
-  			cerr << endl;
-  			cout << seq_part;
+  		bool isFirstPath = true;
+  		std::shared_ptr<Node> lastEndNode = NULL;
+		for (auto const& pinfo_ptr : (*vec_ptr)) {
+			usedContigs.emplace(pinfo_ptr->startNodeName);
+			usedContigs.emplace(pinfo_ptr->startNodeName + "_RC");
+			usedContigs.emplace(pinfo_ptr->endNodeName);
+			usedContigs.emplace(pinfo_ptr->endNodeName + "_RC");
+			for (auto const& edge_ptr: pinfo_ptr->path_ptr->edges) {
+	  			// Determine part of the startNode that will be put into the final sequence
+	  			shared_ptr<Node> startNode = edge_ptr->startNode;
+	  			uint32_t seq_part_start, seq_part_end, seq_part_size;
+	  			std::string seq_part = "";
+	  			if (!edge_ptr->reversed) {		// Edge is not reversed
+	  				seq_part_start = 0;
+	  				seq_part_end = edge_ptr->ovl_ptr->ext_ulQBegin - edge_ptr->ovl_ptr->ext_ulTBegin;  				
+	  			}
+	  			else {							// Edge is reversed
+	  				seq_part_start = 0;
+	  				seq_part_end = edge_ptr->ovl_ptr->ext_ulTBegin - edge_ptr->ovl_ptr->ext_ulQBegin;
+	  			}
+	  			seq_part_size = seq_part_end - seq_part_start;
+	  			if (seq_part_size <= 0) {
+	  				throw std::runtime_error(std::string("SCARA BRIDGER: ERROR - invalid sequence part size: "));
+	  			}
+	  			seq_part.reserve(seq_part_size + 10);		// adding 10 just to avoid missing something by 1
+	  			SequenceStrand localStrand;
+	  			if (startNode->isReverseComplement) localStrand = reverseStrand(strand);
+	  			else localStrand = strand;
+	  			// Testing
+	  			localStrand = strand;
+	  			if (localStrand == SS_FORWARD) {
+	  				// Copy relevant part of the string
+	  				int k=0;
+	  				for (; k<seq_part_size; k++) {
+	  					seq_part += (startNode->seq_ptr->seq_strData)[seq_part_start+k];
+	  				}
+	  				// seq_part[k] = '\0';
+	  			} else if (localStrand == SS_REVERSE) {
+	  				// Copy relevant part of the string
+	  				// If the strand is reverse, go from the end of the string and rev
+	  				int k=0;
+	  				for (; k<seq_part_size; k++) {
+	  					uint32_t seq_end = (startNode->seq_ptr->seq_strData).length();
+	  					seq_part += _bioBaseComplement((startNode->seq_ptr->seq_strData)[seq_end-k-1]);
+	  				}
+	  				// seq_part[k] = '\0';
+	  			} else {
+	  				throw std::runtime_error(std::string("SCARA BRIDGER: ERROR - invalid strand type: "));
+	  			}
+	  			// Output the sequence part to the standard output
+	  			cerr << "SCARA BRIDGER: Printing node " << startNode->nName << " with length " << seq_part_size << " - ";
+	  			cerr << seq_part.length() << "/" << startNode->seq_ptr->seq_strData.length();
+	  			cerr << endl;
+	  			cout << seq_part;
 
-  			// Determine the strand for the next node
-  			// Switch it if the overlap strand is '-' (or false)
-  			if (!edge_ptr->ovl_ptr->ext_bOrientation) strand = reverseStrand(strand);
+	  			// Determine the strand for the next node
+	  			// Switch it if the overlap strand is '-' (or false)
+	  			if (!edge_ptr->ovl_ptr->ext_bOrientation) strand = reverseStrand(strand);
+
+	  			// Setting the endNode of the previous path for the next iteration
+	  			lastEndNode = edge_ptr->endNode;
+	  		}
   		}
 
   		// At the end, add the complete last endNode
-  		auto lastEndNode = scaffoldPath.edges.back()->endNode;
+  		SequenceStrand localStrand;
+	  	if (lastEndNode->isReverseComplement) localStrand = reverseStrand(strand);
+	  	else localStrand = strand;
+	  	localStrand = strand;
+  		// auto lastEndNode = scaffoldPath.edges.back()->endNode;
   		cerr << "SCARA BRIDGER: Printing node " << lastEndNode->nName << " with length ";
   		cerr << lastEndNode->seq_ptr->seq_strData.length() << "/" << lastEndNode->seq_ptr->seq_strData.length();
   		cerr << endl;
-  		cout << lastEndNode->seq_ptr->seq_strData;
-  		cout << endl;
-
+  		if (localStrand == SS_FORWARD) {
+  			cout << lastEndNode->seq_ptr->seq_strData << endl;
+  		} else if (localStrand == SS_REVERSE) {
+  			cout << _bioReverseComplement(lastEndNode->seq_ptr->seq_strData) << endl;
+  		} else {
+	  		throw std::runtime_error(std::string("SCARA BRIDGER: ERROR - invalid strand type: "));
+	  	}
   	}
-  	return scaffolds.size();
+
+  	cerr << "SCARA BRIDGER: Printing sequences for unsued contigs! There are " << (mAnchorNodes.size() - usedContigs.size());
+  	cerr << " unused contigs!" << endl;
+	for (auto const& aNodePair : mAnchorNodes) {
+		auto aNode = aNodePair.second;
+		if (usedContigs.find(aNode->nName) == usedContigs.end()) {
+			cout << ">" << aNode->nName << endl;
+			cout << aNode->seq_ptr->seq_strData << endl;
+		}
+	}
+
+
+   	return scaffolds.size();
   }
 
 

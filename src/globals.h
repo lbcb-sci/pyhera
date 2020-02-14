@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 
 namespace scara {
 
@@ -22,5 +22,7 @@ extern bool test_short_length, test_contained_reads, test_low_quality;
 extern bool print_output;
 
 extern double pathGroupHalfSize;
+
+extern std::string logFile;
 
 }

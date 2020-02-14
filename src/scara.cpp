@@ -32,6 +32,8 @@ bool test_short_length, test_contained_reads, test_low_quality;
 bool print_output;
 double pathGroupHalfSize;
 
+std::string logFile;
+
 DebugLevel globalDebugLevel;
 }
 
@@ -74,7 +76,8 @@ void setGlobalParameters() {
   // Setting default Debugg level
   scara::globalDebugLevel = DL_DEBUG;
 
-
+  // Setting Log file
+  scara::logFile = "scaraLog.txt";
 }
 
 void print_version_message_and_exit() {

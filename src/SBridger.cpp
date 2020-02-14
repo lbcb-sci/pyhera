@@ -16,11 +16,11 @@ namespace scara {
     bGraphCreated = 0;
   }
 
-  void SBridger::Initialize(const string& strReadsFasta, const string& strContigsFasta, const string& strR2Cpaf, const string& strR2CRaf) {
+  void SBridger::Initialize(const string& strReadsFasta, const string& strContigsFasta, const string& strR2Cpaf, const string& strR2Rpaf) {
       parseProcessFastq(strReadsFasta, mIdToRead);
       parseProcessFasta(strContigsFasta, mIdToContig);
       parseProcessPaf(strR2Cpaf, mIdToOvlR2C);
-      parseProcessPaf(strR2CRaf, mIdToOvlR2R);
+      parseProcessPaf(strR2Rpaf, mIdToOvlR2R);
   }
 
 	void SBridger::printData(void){
@@ -64,6 +64,24 @@ namespace scara {
       std::cerr << "\nSBridger:\n";
       printData();
       printGraph();
+
+      if (scara::globalDebugLevel >= DL_VERBOSE) {
+	      ofstream outStream;
+		  outStream.open(scara::logFile);
+		  outStream << "OVERLAPS FOR CONTIGS:" << endl << endl;
+		  printOvlToStream(mIdToOvlR2C, outStream);
+
+		  outStream << endl << "OVERLAPS FOR READS:" << endl << endl;
+		  printOvlToStream(mIdToOvlR2R, outStream);
+		  
+		  outStream << endl << "EDGES FOR ANCHOR NODES:" << endl << endl;
+		  printNodeToStream(mAnchorNodes, outStream);
+
+		  outStream << endl << "EDGES FOR READ NODES:" << endl << endl;
+		  printNodeToStream(mReadNodes, outStream);
+
+		  outStream.close();
+	  }
   }
 
   void SBridger::generateGraph(void) {
@@ -132,6 +150,7 @@ namespace scara {
 				numAREdges_zero += 1;
 				break;
 			default:
+				numAREdges_usable += 1;
 				break;
 		}
 		if (test_val > 0) {
@@ -494,6 +513,28 @@ namespace scara {
    	return scaffolds.size();
   }
 
+  void SBridger::printOvlToStream(MapIdToOvl &map, ofstream &outStream) {
+
+	for (auto const& it1 : map) {
+		outStream << "Overlaps for sequence " << it1.first.first << " and overlap type " << it1.first.second << ":" << endl;
+		for (auto const& it2 : it1.second) {
+			outStream << "(" << it2->ext_strTarget << "," << it2->ext_strName << ") ";
+		}
+		outStream << endl;
+	}
+  }
+  
+
+  void SBridger::printNodeToStream(MapIdToNode &map, ofstream &outStream) {
+  	for (auto const& it : map) {
+  		outStream << "Edges for node " << it.first << ":" << endl;
+  		auto node_ptr = it.second;
+  		for (auto const& edge_ptr : node_ptr->vOutEdges) {
+  			outStream << "(" << edge_ptr->startNodeName << "," << edge_ptr->endNodeName << ") ";
+  		}
+  		outStream << endl;
+  	}
+  }
 
   // OBSOLETE
   void SBridger::Execute(void) {

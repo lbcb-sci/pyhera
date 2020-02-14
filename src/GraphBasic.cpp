@@ -165,22 +165,28 @@ namespace scara {
   		throw std::runtime_error(std::string("Error calculating edge statistics"));
   	}
 
-	QOH1 = ovl_ptr->ext_ulQBegin;
-	QOH2 = ovl_ptr->ext_ulQLen - ovl_ptr->ext_ulQEnd;
-	TOH1 = ovl_ptr->ext_ulTBegin;
-	TOH2 = ovl_ptr->ext_ulTLen - ovl_ptr->ext_ulTEnd;
+  	QOH1 = ovl_ptr->ext_ulQBegin;
+  	QOH2 = ovl_ptr->ext_ulQLen - ovl_ptr->ext_ulQEnd;
 
-	QOL = ovl_ptr->ext_ulQEnd - ovl_ptr->ext_ulQBegin;
-	TOL = ovl_ptr->ext_ulTEnd - ovl_ptr->ext_ulTBegin;
+    if (ovl_ptr->ext_bOrientation) {
+  	  TOH1 = ovl_ptr->ext_ulTBegin;
+  	  TOH2 = ovl_ptr->ext_ulTLen - ovl_ptr->ext_ulTEnd;
+    } else {
+      TOH2 = ovl_ptr->ext_ulTBegin;
+      TOH1 = ovl_ptr->ext_ulTLen - ovl_ptr->ext_ulTEnd;
+    }
 
-	SI = (float)(ovl_ptr->paf_matching_bases)/ovl_ptr->paf_overlap_length;
+  	QOL = ovl_ptr->ext_ulQEnd - ovl_ptr->ext_ulQBegin;
+  	TOL = ovl_ptr->ext_ulTEnd - ovl_ptr->ext_ulTBegin;
 
-	float avg_ovl_len = (QOL+TOL)/2;
-	OS = avg_ovl_len*SI;
-	QES1 = OS + TOH1/2 - (QOH1 + TOH2)/2;
-	QES2 = OS + TOH2/2 - (QOH2 + TOH1)/2;
-	TES1 = OS + QOH1/2 - (QOH2 + TOH1)/2;
-	TES2 = OS + QOH2/2 - (QOH1 + TOH2)/2;
+  	SI = (float)(ovl_ptr->paf_matching_bases)/ovl_ptr->paf_overlap_length;
+
+  	float avg_ovl_len = (QOL+TOL)/2;
+  	OS = avg_ovl_len*SI;
+  	QES1 = OS + TOH1/2 - (QOH1 + TOH2)/2;
+  	QES2 = OS + TOH2/2 - (QOH2 + TOH1)/2;
+  	TES1 = OS + QOH1/2 - (QOH2 + TOH1)/2;
+  	TES2 = OS + QOH2/2 - (QOH1 + TOH2)/2;
 
 	// NOTE: This seeme logical:
 	// If a query extends further right or left then the target, it makes no sense to extend it in that direction
@@ -293,7 +299,7 @@ namespace scara {
 
     // If the overlap is correct, return 1
 
-  	return true;
+  	return 1;
   }
 
 
@@ -335,6 +341,7 @@ namespace scara {
   	}
 
   	// Look for START node REVERSE COMPLEMENT in Anchor nodes
+  	// KK: This could be put in the previous code section, because original node and RC should be in the same node set
   	it = mAnchorNodes.find(startNodeName_RC);
   	if (it != mAnchorNodes.end()) {
   		startNode_RC = it->second;
@@ -535,7 +542,8 @@ namespace scara {
   			// endNodeName = endNodeName.substr(0, endNodeName.size()-rc_suffix.size());
   		}
   		pathDir = D_LEFT;
-  		if (firstEdge->QES1 < firstEdge->QES2) pathDir = D_RIGHT;
+  		if (!(firstEdge->reversed) && (firstEdge->QES1 < firstEdge->QES2)) pathDir = D_RIGHT;
+  		if ( (firstEdge->reversed) && (firstEdge->TES1 < firstEdge->TES2)) pathDir = D_RIGHT;
   		// Add the length of the first Node (start node of the first edge)
   		if (!(firstEdge->reversed)) {
   			length += firstEdge->ovl_ptr->ext_ulQLen;
@@ -561,10 +569,17 @@ namespace scara {
 	  			ENbegin = edge->ovl_ptr->ext_ulQBegin;
 	  			ENend   = edge->ovl_ptr->ext_ulQEnd;
 	  		}
+
+	  		// If the nodes are on different strands, switch the info (begin and end) for the end node
+	  		if (!(edge->ovl_ptr->ext_bOrientation)) {
+	  			uint32_t temp = ENend;
+	  			ENend = ENlen - ENbegin;
+	  			ENbegin = ENlen - temp;
+	  		}
 	  		// For each edge, add to the length of the path part of the end node that 
 	  		// does not overlap with the start node (End overhang - start overhang)
 	        if (pathDir == D_RIGHT) {
-		  		  length += (ENlen - ENend) - (SNlen - SNend);
+		  	  length += (ENlen - ENend) - (SNlen - SNend);
 	          if (SNbegin <= ENbegin) {
 				  negativeEScount++;
 	          }
@@ -579,7 +594,7 @@ namespace scara {
 	        }
 	        // KK: If the overlapping sequences are on different strands (relative strand = '-')
 	        //     Switch direction for the following calculations
-	        if (!(edge->ovl_ptr->ext_bOrientation)) dir = oppositeDirection();
+	        if (!(edge->ovl_ptr->ext_bOrientation)) pathDir = oppositeDirection(pathDir);
 	  	}
       length2 += ENlen;
 	  	avgSI /= t_path_ptr->edges.size();

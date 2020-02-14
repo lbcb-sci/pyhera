@@ -3,6 +3,7 @@
 #include "Overlap.h"
 #include "Loader.h"
 #include <string>
+#include <fstream>
 
 namespace scara {
 
@@ -79,6 +80,9 @@ namespace scara {
 
 	private:
 		shared_ptr<PathInfo> getBestPath_AvgSI();
+
+		void printOvlToStream(MapIdToOvl &map, ofstream& outStream);
+		void printNodeToStream(MapIdToNode &map, ofstream& outStream);
 	};
 
 }

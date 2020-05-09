@@ -6,7 +6,7 @@ enum DebugLevel {
     DL_NONE = 0,
     DL_INFO = 1 << 0,
     DL_VERBOSE = 1 << 1,
-    DL_DEBUG = 1<< 2,
+    DL_DEBUG = 1 << 2,
   };
 
 extern DebugLevel globalDebugLevel;

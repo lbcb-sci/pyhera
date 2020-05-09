@@ -19,16 +19,16 @@ namespace scara {
   void SBridger::Initialize(const string& strReadsFasta, const string& strContigsFasta, const string& strR2Cpaf, const string& strR2Rpaf) {
       parseProcessFastq(strReadsFasta, mIdToRead);
       parseProcessFasta(strContigsFasta, mIdToContig);
-      parseProcessPaf(strR2Cpaf, mIdToOvlR2C);
-      parseProcessPaf(strR2Rpaf, mIdToOvlR2R);
+      parseProcessPaf(strR2Cpaf, vOvlR2C);
+      parseProcessPaf(strR2Rpaf, vOvlR2R);
   }
 
 	void SBridger::printData(void){
 	  std::cerr << "\nLoaded data\n";
       std::cerr << "Number of contigs:" << mIdToContig.size() << '\n';
       std::cerr << "Number of reads:" << mIdToRead.size() << '\n';
-      std::cerr << "Number of read-to-contig overlaps:" << mIdToOvlR2C.size() << '\n';
-      std::cerr << "Number of read-to-read overlaps:" << mIdToOvlR2R.size() << '\n';
+      std::cerr << "Number of read-to-contig overlaps:" << vOvlR2C.size() << '\n';
+      std::cerr << "Number of read-to-read overlaps:" << vOvlR2R.size() << '\n';
 	}
 
 
@@ -44,52 +44,73 @@ namespace scara {
 	        std::cerr << "Number of isolated read nodes:" << isolatedRNodes << '\n';
 	        std::cerr << "Number of edges:" << vEdges.size() << '\n';
 
-	        std::cerr << "\nAnchor node - read node edges:" << '\n';
-			std::cerr << "Usable: " << numAREdges_usable << '\n';
-			std::cerr << "Contained: " << numAREdges_contained << '\n';
-			std::cerr << "Short: " << numAREdges_short << '\n';
-			std::cerr << "Low quality: " << numAREdges_lowqual << '\n';
-			std::cerr << "Zero extension: " << numAREdges_zero << '\n';
+	        std::cerr << "\nEdges:" << '\n';
+			std::cerr << "Usable: " << numEdges_usable << '\n';
+			std::cerr << "Contained: " << numEdges_contained << '\n';
+			std::cerr << "Short: " << numEdges_short << '\n';
+			std::cerr << "Low quality: " << numEdges_lowqual << '\n';
+			std::cerr << "Zero extension: " << numEdges_zero << '\n';
 
-			std::cerr << "\nRead node - read node edges:" << '\n';
-			std::cerr << "Usable: " << numRREdges_usable << '\n';
-			std::cerr << "Contained: " << numRREdges_contained << '\n';
-			std::cerr << "Short: " << numRREdges_short << '\n';
-			std::cerr << "Low quality: " << numRREdges_lowqual << '\n';
-			std::cerr << "Zero extension: " << numRREdges_zero << '\n';
 		}
 	}
 
+
+	void SBridger::printPaths(void) {
+		std::cerr << "\nPrinting generated paths!";
+		std::cerr << "\nNumber of paths: " << vPaths.size();
+		std::cerr << "\nPaths:\n";
+		int i = 1;
+
+		for (auto const& t_path_ptr : vPaths) {
+			size_t size = t_path_ptr->edges.size();
+			std::cerr << "\nPath #" << i << ", edges: " << size << '\n';
+			if (size > 10) {
+				auto first = t_path_ptr->edges.front();
+				auto last  = t_path_ptr->edges.back();
+				std::cerr << '(' << first->startNodeName << ", " << first->endNodeName << ") ... ";
+				std::cerr << '(' << last->startNodeName << ", " << last->endNodeName << ")\n";
+			}
+			else {
+				for (auto const& t_edge_ptr : t_path_ptr->edges) {
+					std::cerr << '(' << t_edge_ptr->startNodeName << ", " << t_edge_ptr->endNodeName << ") ";
+				}	
+			}
+
+			i++;
+		}
+	}
+
+
+
   void SBridger::print(void) {
+  	  ofstream outStream;
+	  outStream.open(scara::logFile);
       std::cerr << "\nSBridger:\n";
       printData();
       printGraph();
 
       if (scara::globalDebugLevel >= DL_VERBOSE) {
-	      ofstream outStream;
-		  outStream.open(scara::logFile);
 		  outStream << "OVERLAPS FOR CONTIGS:" << endl << endl;
-		  printOvlToStream(mIdToOvlR2C, outStream);
+		  printOvlToStream(vOvlR2C, outStream);
 
 		  outStream << endl << "OVERLAPS FOR READS:" << endl << endl;
-		  printOvlToStream(mIdToOvlR2R, outStream);
-		  
+		  printOvlToStream(vOvlR2R, outStream);
+
 		  outStream << endl << "EDGES FOR ANCHOR NODES:" << endl << endl;
 		  printNodeToStream(mAnchorNodes, outStream);
 
 		  outStream << endl << "EDGES FOR READ NODES:" << endl << endl;
 		  printNodeToStream(mReadNodes, outStream);
-
-		  outStream.close();
 	  }
+
+ 	  outStream.close();
   }
 
   void SBridger::generateGraph(void) {
 
   	 numANodes = numRNodes = 0;
 
-	 numAREdges_all = numAREdges_usable = numAREdges_contained = numAREdges_short = numAREdges_lowqual = numAREdges_zero = 0;
-	 numRREdges_all = numRREdges_usable = numRREdges_contained = numRREdges_short = numRREdges_lowqual = numRREdges_zero = 0;
+	 numEdges_all = numEdges_usable = numEdges_contained = numEdges_short = numEdges_lowqual = numEdges_zero = 0;
 
 	// 1. Generate anchor nodes for each original contig and for reverse complement
 	for (auto const& it : mIdToContig) {
@@ -116,19 +137,15 @@ namespace scara {
 	numRNodes = mReadNodes.size();
 
 	// 3. Generate edges, function Overlap::Test() is used for filtering
-	for (auto const& it1 : mIdToOvlR2C) {
-		for (auto const& it2 : it1.second) {
-			if (it2->Test()) {
-				createEdgesFromOverlap(it2, mAnchorNodes, mReadNodes, vEdges);
-			}
+	for (auto const& it : vOvlR2C) {
+		if (it->Test()) {
+			createEdgesFromOverlap(it, mAnchorNodes, mReadNodes, vEdges);
 		}
 	}
 	
-	for (auto const& it1 : mIdToOvlR2R) {
-		for (auto const& it2 : it1.second) {
-			if (it2->Test()) {
-				createEdgesFromOverlap(it2, mAnchorNodes, mReadNodes, vEdges);
-			}
+	for (auto const& it : vOvlR2R) {
+		if (it->Test()) {
+			createEdgesFromOverlap(it, mAnchorNodes, mReadNodes, vEdges);
 		}
 	}
 
@@ -138,19 +155,19 @@ namespace scara {
 		int test_val = edge_ptr->test();
 		switch (test_val) {
 			case (-1):
-				numAREdges_contained += 1;
+				numEdges_contained += 1;
 				break;
 			case (-2):
-				numAREdges_short += 1;
+				numEdges_short += 1;
 				break;
 			case (-3):
-				numAREdges_lowqual += 1;
+				numEdges_lowqual += 1;
 				break;
 			case (-4):
-				numAREdges_zero += 1;
+				numEdges_zero += 1;
 				break;
 			default:
-				numAREdges_usable += 1;
+				numEdges_usable += 1;
 				break;
 		}
 		if (test_val > 0) {
@@ -182,6 +199,7 @@ namespace scara {
 
   void SBridger::cleanupGraph(void) {
   	// TODO: this is currently a placeholder
+  	// Most of the cleanup was already done when constructing the graph
   }
 
   int SBridger::generatePaths(void) {
@@ -315,6 +333,7 @@ namespace scara {
 	std::set<std::string> startNodes;
 	std::set<std::string> endNodes;
 	std::vector<shared_ptr<std::vector<shared_ptr<PathGroup>>>> scaffolds_temp;
+	std::vector<shared_ptr<std::vector<shared_ptr<PathGroup>>>> scaffolds_filtered;
 	for (auto const& it : vFilteredGroups) {
 		startNodes.insert(it.second->startNodeName);
 		endNodes.insert(it.second->endNodeName);
@@ -336,10 +355,35 @@ namespace scara {
 		}
 	}
 
+	// Eliminating duplicate scaffolds
+	// Since two nodes were generated for each contig and read (FW and RC), and two edges for each overlap
+	// there should be two identical scaffolds, one on FW and the other on RC strand
+	// Drop one of them
+
+	std::cerr << "\n\nSCARA: Eliminating duplicate scaffolds:";
+	std::cerr << "\n......";
+	for (auto const& vec_ptr : scaffolds_temp) {
+		bool found = false;
+		for (auto const& vec_ptr2 : scaffolds_filtered) {
+			if (scaffoldsEqual(vec_ptr, vec_ptr2)) {
+				found = true;
+				break;
+			}
+		}
+		if (found) {
+		// If equivalent scaffold already exists in the list of final scaffolds, jusr skip this one
+		// TODO: check which one is better and use that one
+		}
+		else {
+			scaffolds_filtered.emplace_back(vec_ptr);
+		}
+
+	}
+
 	if (scara::print_output) {
   		std::cerr << "\n\nSCARA: Final scaffolds before sequence generation:";
   		int i= 0;
-	  	for (auto const& vec_ptr : scaffolds_temp) {
+	  	for (auto const& vec_ptr : scaffolds_filtered) {
 	  		i++;
 	  		std::cerr << "\nSCAFFOLD " << i << ": ";
 	  		for (auto const& pgroup_ptr : (*vec_ptr)) {
@@ -351,7 +395,7 @@ namespace scara {
 	// Processing scaffolds by chosing a best path within PathGroup
 	// scaffolds_temp contains vectors of PathGroups
 	// scaffolds contains vectors of PathInfos, pointing to the best path for each group
-	for (auto const&  vec_ptr: scaffolds_temp) {
+	for (auto const&  vec_ptr: scaffolds_filtered) {
 		auto newVec = make_shared<std::vector<shared_ptr<PathInfo>>>();
 		for (auto const& pgroup_ptr : (*vec_ptr)) {
 			auto best_pinfo_ptr = pgroup_ptr->vPathInfos[0];
@@ -386,21 +430,20 @@ namespace scara {
   		i++;
   		// Generate header and calculate scaffold length
   		std::string header = ">Scaffold_" + to_string(i);
-  		cerr << "SCARA: Generating sequence and header for scaffold " << i << endl;
-  		cerr << "SCARA: sacffold edges: ";
+  		cerr << "\nSCARA: Generating sequence and header for scaffold " << i << endl;
+  		cerr << "SCARA: scaffold edges: ";
 
   		uint32_t slength = 0;
-		uint32_t lastNodeLength;
+		uint32_t lastNodeLength = 0;
 		uint32_t numNodes = 1;
   		for (auto const& pinfo_ptr : (*vec_ptr)) {
   			header += ' ' + pinfo_ptr->path_ptr->edges.front()->startNodeName;
   			slength += pinfo_ptr->length;
   			// Remove the length of the endNode (as not to be added twice)
   			auto lastEdge = pinfo_ptr->path_ptr->edges.back();
-  			if (!lastEdge->reversed) lastNodeLength = lastEdge->ovl_ptr->ext_ulTLen;
-  			else lastNodeLength = lastEdge->ovl_ptr->ext_ulQLen;
+  			lastNodeLength = lastEdge->ELen;
   			slength -= lastNodeLength;
-  			numNodes += pinfo_ptr->path_ptr->edges.size() - 1;
+  			numNodes += pinfo_ptr->path_ptr->edges.size();
 
   			cerr << pinfo_ptr->path_ptr->edges.size() << " (" << pinfo_ptr->length << ") ";
   		}
@@ -408,95 +451,74 @@ namespace scara {
   		slength += lastNodeLength;		// For the last path, add the endNode length
 
   		// Output the scaffold header to cout!
-  		cerr << "SCARA generated header " << header << endl;
+  		cerr << "\nSCARA generated header " << header << endl;
   		cout << header << endl;
 
   		cerr << "SCARA generating sequence of length " << slength << " from " << numNodes << " nodes!" << endl;
 
   		// Calculate scaffold sequence from scaffoldPath and output it to cout
   		// NOTE: Assuming direction RIGHT!
-  		// TODO: for completion include generating sequences for direction LEFT
-  		SequenceStrand strand = SS_FORWARD;
-  		bool isFirstPath = true;
   		std::shared_ptr<Node> lastEndNode = NULL;
 		for (auto const& pinfo_ptr : (*vec_ptr)) {
-			usedContigs.emplace(pinfo_ptr->startNodeName);
-			usedContigs.emplace(pinfo_ptr->startNodeName + "_RC");
-			usedContigs.emplace(pinfo_ptr->endNodeName);
-			usedContigs.emplace(pinfo_ptr->endNodeName + "_RC");
+			std::string startNodeName = pinfo_ptr->startNodeName;
+			std::string endNodeName = pinfo_ptr->endNodeName;
+			usedContigs.emplace(startNodeName);
+			usedContigs.emplace(getRCNodeName(startNodeName));
+			usedContigs.emplace(endNodeName);
+			usedContigs.emplace(getRCNodeName(endNodeName));
+			// TODO: Check if any of the contigs were used more than once
 			for (auto const& edge_ptr: pinfo_ptr->path_ptr->edges) {
 	  			// Determine part of the startNode that will be put into the final sequence
 	  			shared_ptr<Node> startNode = edge_ptr->startNode;
 	  			uint32_t seq_part_start, seq_part_end, seq_part_size;
 	  			std::string seq_part = "";
-	  			if (!edge_ptr->reversed) {		// Edge is not reversed
-	  				seq_part_start = 0;
-	  				seq_part_end = edge_ptr->ovl_ptr->ext_ulQBegin - edge_ptr->ovl_ptr->ext_ulTBegin;  				
-	  			}
-	  			else {							// Edge is reversed
-	  				seq_part_start = 0;
-	  				seq_part_end = edge_ptr->ovl_ptr->ext_ulTBegin - edge_ptr->ovl_ptr->ext_ulQBegin;
-	  			}
+	  			
+  				seq_part_start = 0;
+  				seq_part_end = edge_ptr->SStart - edge_ptr->EStart;	  			
 	  			seq_part_size = seq_part_end - seq_part_start;
 	  			if (seq_part_size <= 0) {
 	  				throw std::runtime_error(std::string("SCARA BRIDGER: ERROR - invalid sequence part size: "));
 	  			}
 	  			seq_part.reserve(seq_part_size + 10);		// adding 10 just to avoid missing something by 1
-	  			SequenceStrand localStrand;
-	  			if (startNode->isReverseComplement) localStrand = reverseStrand(strand);
-	  			else localStrand = strand;
-	  			// Testing
-	  			localStrand = strand;
-	  			if (localStrand == SS_FORWARD) {
+
+	  			// localStrand = strand;
+	  			if (!(startNode->isReverseComplement)) {
 	  				// Copy relevant part of the string
-	  				int k=0;
+	  				uint32_t k=0;
 	  				for (; k<seq_part_size; k++) {
-	  					seq_part += (startNode->seq_ptr->seq_strData)[seq_part_start+k];
+	  					seq_part[k] = (startNode->seq_ptr->seq_strData)[seq_part_start+k];
 	  				}
-	  				// seq_part[k] = '\0';
-	  			} else if (localStrand == SS_REVERSE) {
-	  				// Copy relevant part of the string
+	  				seq_part[k] = '\0';
+	  			} else {
 	  				// If the strand is reverse, go from the end of the string and rev
-	  				int k=0;
+	  				uint32_t k=0;
 	  				for (; k<seq_part_size; k++) {
 	  					uint32_t seq_end = (startNode->seq_ptr->seq_strData).length();
-	  					seq_part += _bioBaseComplement((startNode->seq_ptr->seq_strData)[seq_end-k-1]);
+	  					seq_part += _bioBaseComplement((startNode->seq_ptr->seq_strData)[seq_end-seq_part_start-k-1]);
 	  				}
-	  				// seq_part[k] = '\0';
-	  			} else {
-	  				throw std::runtime_error(std::string("SCARA BRIDGER: ERROR - invalid strand type: "));
+	  				seq_part[k] = '\0';
 	  			}
+
 	  			// Output the sequence part to the standard output
 	  			cerr << "SCARA BRIDGER: Printing node " << startNode->nName << " with length " << seq_part_size << " - ";
 	  			cerr << seq_part.length() << "/" << startNode->seq_ptr->seq_strData.length();
 	  			cerr << endl;
 	  			cout << seq_part;
 
-	  			// Determine the strand for the next node
-	  			// Switch it if the overlap strand is '-' (or false)
-	  			if (!edge_ptr->ovl_ptr->ext_bOrientation) strand = reverseStrand(strand);
-
 	  			// Setting the endNode of the previous path for the next iteration
 	  			lastEndNode = edge_ptr->endNode;
 	  		}
   		}
 
-  		// At the end, add the complete last endNode
-  		SequenceStrand localStrand;
-	  	if (lastEndNode->isReverseComplement) localStrand = reverseStrand(strand);
-	  	else localStrand = strand;
-	  	localStrand = strand;
   		// auto lastEndNode = scaffoldPath.edges.back()->endNode;
   		cerr << "SCARA BRIDGER: Printing node " << lastEndNode->nName << " with length ";
   		cerr << lastEndNode->seq_ptr->seq_strData.length() << "/" << lastEndNode->seq_ptr->seq_strData.length();
   		cerr << endl;
-  		if (localStrand == SS_FORWARD) {
+  		if (!(lastEndNode->isReverseComplement)) {
   			cout << lastEndNode->seq_ptr->seq_strData << endl;
-  		} else if (localStrand == SS_REVERSE) {
-  			cout << _bioReverseComplement(lastEndNode->seq_ptr->seq_strData) << endl;
   		} else {
-	  		throw std::runtime_error(std::string("SCARA BRIDGER: ERROR - invalid strand type: "));
-	  	}
+  			cout << _bioReverseComplement(lastEndNode->seq_ptr->seq_strData) << endl;
+  		} 
   	}
 
   	cerr << "SCARA BRIDGER: Printing sequences for unsued contigs! There are " << (mAnchorNodes.size() - usedContigs.size());
@@ -513,13 +535,10 @@ namespace scara {
    	return scaffolds.size();
   }
 
-  void SBridger::printOvlToStream(MapIdToOvl &map, ofstream &outStream) {
+  void SBridger::printOvlToStream(VecOvl &vOvl, ofstream &outStream) {
 
-	for (auto const& it1 : map) {
-		outStream << "Overlaps for sequence " << it1.first.first << " and overlap type " << it1.first.second << ":" << endl;
-		for (auto const& it2 : it1.second) {
-			outStream << "(" << it2->ext_strTarget << "," << it2->ext_strName << ") ";
-		}
+	for (auto const& it : vOvl) {
+		outStream << "(" << it->ext_strTarget << "," << it->ext_strName << ") ";
 		outStream << endl;
 	}
   }
@@ -534,6 +553,24 @@ namespace scara {
   		}
   		outStream << endl;
   	}
+  }
+
+  // Check if two scaffolds are equivalent
+  // First scaffold is checked from the start to the end
+  // Second scaffold is checked from the end to the start
+  // Node names between scaffolds must be reverse complements
+  bool SBridger::scaffoldsEqual(shared_ptr<std::vector<shared_ptr<PathGroup>>> scaff1, shared_ptr<std::vector<shared_ptr<PathGroup>>> scaff2) {
+  	if (scaff1->size() != scaff2->size()) return false;
+  	uint32_t size = scaff1->size();
+  	for (uint32_t i=0; i++; i<size) {
+  		std::string sname1 = (*scaff1)[i]->startNodeName;
+  		std::string ename1 = (*scaff1)[i]->endNodeName;
+  		std::string sname2 = (*scaff2)[size-1-i]->startNodeName;
+  		std::string ename2 = (*scaff2)[size-1-i]->endNodeName;
+
+  		if (sname1 != getRCNodeName(ename2) || ename1 != getRCNodeName(sname2)) return false;
+  	}
+  	return true;
   }
 
   // OBSOLETE

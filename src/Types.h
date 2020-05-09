@@ -15,5 +15,6 @@ namespace scara {
   using MapIdToSeq = std::map<std::string, std::shared_ptr<Sequence>>;
 
   using MapIdToNode = std::map<std::string, std::shared_ptr<Node>>;
+  using VecOvl = std::vector<std::shared_ptr<Overlap>>;
 
 }

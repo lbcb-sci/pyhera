@@ -62,6 +62,9 @@ namespace scara {
 
     void GetExtensionPosition(uint32_t& ulBegin, uint32_t& ulEnd);
 
+    Overlap getReverseQTOverlap();
+    Overlap getReverseStrandOverlap();
+
     bool Test(void);
   };
 

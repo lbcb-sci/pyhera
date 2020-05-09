@@ -11,8 +11,8 @@ namespace scara {
 
 	class SBridger {
 	private:
-		MapIdToOvl mIdToOvlR2C;
-	  	MapIdToOvl mIdToOvlR2R;
+		VecOvl vOvlR2C;
+	  	VecOvl vOvlR2R;
 	  	MapIdToSeq mIdToContig;
 	  	MapIdToSeq mIdToRead;
 
@@ -20,19 +20,12 @@ namespace scara {
 	  	uint32_t numANodes;
 	  	uint32_t numRNodes;
 
-	  	uint32_t numAREdges_all;
-	  	uint32_t numAREdges_usable;
-	  	uint32_t numAREdges_contained;
-	  	uint32_t numAREdges_short;
-	  	uint32_t numAREdges_lowqual;
-	  	uint32_t numAREdges_zero;
-
-	  	uint32_t numRREdges_all;
-	  	uint32_t numRREdges_usable;
-	  	uint32_t numRREdges_contained;
-	  	uint32_t numRREdges_short;
-	  	uint32_t numRREdges_lowqual;
-	  	uint32_t numRREdges_zero;
+	  	uint32_t numEdges_all;
+	  	uint32_t numEdges_usable;
+	  	uint32_t numEdges_contained;
+	  	uint32_t numEdges_short;
+	  	uint32_t numEdges_lowqual;
+	  	uint32_t numEdges_zero;
 
 	  	uint32_t isolatedANodes = 0;
 	  	uint32_t isolatedRNodes = 0;
@@ -64,6 +57,8 @@ namespace scara {
 
 	  	void printGraph(void);
 
+	  	void printPaths(void);
+
 	  	void print(void);
 
 	  	void generateGraph(void);
@@ -81,8 +76,11 @@ namespace scara {
 	private:
 		shared_ptr<PathInfo> getBestPath_AvgSI();
 
-		void printOvlToStream(MapIdToOvl &map, ofstream& outStream);
+		void printOvlToStream(VecOvl &vOvl, ofstream& outStream);
 		void printNodeToStream(MapIdToNode &map, ofstream& outStream);
+
+		bool scaffoldsEqual(shared_ptr<std::vector<shared_ptr<PathGroup>>> scaff1, shared_ptr<std::vector<shared_ptr<PathGroup>>> scaff2);
+		int compareScaffolds(shared_ptr<std::vector<shared_ptr<PathGroup>>> scaff1, shared_ptr<std::vector<shared_ptr<PathGroup>>> scaff2);
 	};
 
 }

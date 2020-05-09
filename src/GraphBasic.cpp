@@ -55,6 +55,20 @@ namespace scara {
     }
   }
 
+  // Return a reverse complement node name, it the original name ends with _RC, remove _RC from the end
+  // Otherwise, ad _RC at the end
+  std::string getRCNodeName(const std::string nodeName) {
+  	if (nodeName.rfind("_RC") != nodeName.size() - 4) return nodeName + "_RC";
+  	else return nodeName.substr(0, nodeName.size()-3);
+  }
+
+
+  // Return an original node name, without _RC at the end
+  std::string getOGNodeName(const std::string nodeName) {
+  	if (nodeName.rfind("_RC") != nodeName.size() - 4) return nodeName;
+  	else return nodeName.substr(0, nodeName.size()-3);
+  }
+
 
   Node::Node(NodeType i_nType, std::string i_nName, std::shared_ptr<Sequence> i_seq_ptr
   ) : nType(i_nType), nName(i_nName), seq_ptr(i_seq_ptr), isReverseComplement(false)
@@ -106,14 +120,16 @@ namespace scara {
   	       , std::string i_endNodeName, std::shared_ptr<Node> i_endNode, std::shared_ptr<Overlap> i_ovl_ptr
   ) : startNodeName(i_startNodeName), startNode(i_startNode), endNodeName(i_endNodeName), endNode(i_endNode), ovl_ptr(i_ovl_ptr)
   {
-  	reversed = false;
+  	this->reversedNodes = false;
+  	this->copyDataFromOverlap();
   	this->calcEdgeStats();
   }
 
   Edge::Edge(std::shared_ptr<Overlap> i_ovl_ptr
   ) : startNodeName(i_ovl_ptr->ext_strName), endNodeName(i_ovl_ptr->ext_strTarget), ovl_ptr(i_ovl_ptr)
   {
-  	reversed = false;
+  	this->reversedNodes = false;
+  	this->copyDataFromOverlap();
   	this->calcEdgeStats();
   }
 
@@ -121,7 +137,8 @@ namespace scara {
   Edge::Edge(std::shared_ptr<Overlap> i_ovl_ptr, MapIdToNode &mAnchorNodes, MapIdToNode &mReadNodes
   ) : startNodeName(i_ovl_ptr->ext_strName), endNodeName(i_ovl_ptr->ext_strTarget), ovl_ptr(i_ovl_ptr)
   {
-  	reversed = false;
+  	this->reversedNodes = false;
+  	this->copyDataFromOverlap();
   	this->calcEdgeStats();
   	// KK: The assumption is that all of the nodes are already loaded
   	// We are adding pointers to start and end node to each edge
@@ -160,24 +177,39 @@ namespace scara {
   	// KK: the Edge will be later added to outgoing edges for both Nodes
   }
 
+  void Edge::copyDataFromOverlap() {
+  	if (ovl_ptr == NULL) {
+  		throw std::runtime_error(std::string("Error calculating edge statistics"));
+  	}
+    // Copying data from overlap, Start node is Query, End node is Target
+    SLen   = ovl_ptr->ext_ulQLen;
+    SStart = ovl_ptr->ext_ulQBegin;
+    SEnd   = ovl_ptr->ext_ulQEnd;
+    ELen   = ovl_ptr->ext_ulTLen;
+    EStart = ovl_ptr->ext_ulTBegin;
+    EEnd   = ovl_ptr->ext_ulTEnd;
+    ovl_bOrientation = ovl_ptr->ext_bOrientation;
+
+  }
+
   void Edge::calcEdgeStats() {
   	if (ovl_ptr == NULL) {
   		throw std::runtime_error(std::string("Error calculating edge statistics"));
   	}
 
-  	QOH1 = ovl_ptr->ext_ulQBegin;
-  	QOH2 = ovl_ptr->ext_ulQLen - ovl_ptr->ext_ulQEnd;
+  	QOH1 = SStart;
+  	QOH2 = SLen - SEnd;
 
-    if (ovl_ptr->ext_bOrientation) {
-  	  TOH1 = ovl_ptr->ext_ulTBegin;
-  	  TOH2 = ovl_ptr->ext_ulTLen - ovl_ptr->ext_ulTEnd;
+    if (ovl_bOrientation) {
+  	  TOH1 = EStart;
+  	  TOH2 = ELen - EEnd;
     } else {
-      TOH2 = ovl_ptr->ext_ulTBegin;
-      TOH1 = ovl_ptr->ext_ulTLen - ovl_ptr->ext_ulTEnd;
+      TOH2 = EStart;
+      TOH1 = ELen - EEnd;
     }
 
-  	QOL = ovl_ptr->ext_ulQEnd - ovl_ptr->ext_ulQBegin;
-  	TOL = ovl_ptr->ext_ulTEnd - ovl_ptr->ext_ulTBegin;
+  	QOL = SEnd - SStart;
+  	TOL = EEnd - EStart;
 
   	SI = (float)(ovl_ptr->paf_matching_bases)/ovl_ptr->paf_overlap_length;
 
@@ -211,7 +243,19 @@ namespace scara {
   	startNode = endNode;
   	endNode = tempNodePtr;
 
-  	uint32_t tui32 = QOH1;
+	uint32_t tui32 = SLen;
+	SLen = ELen;
+	ELen = tui32;
+
+	tui32 = SStart;
+	SStart = EStart;
+	EStart = tui32;
+
+	tui32 = SEnd;
+	SEnd = EEnd;
+	EEnd = tui32;
+
+  	tui32 = QOH1;
   	QOH1 = TOH1;
   	TOH1 = tui32;
 
@@ -223,7 +267,7 @@ namespace scara {
   	QOL = TOL;
   	TOL = tui32;
 
-  	// Sequence identity and overlap score remain unchanged
+  	// Relative strand, sequence identity and overlap score remain unchanged
 
   	float fTemp = QES1;
   	QES1 = TES1;
@@ -233,7 +277,43 @@ namespace scara {
   	QES2 = TES2;
   	TES2 = fTemp;
 
-  	reversed = !reversed;
+  	reversedNodes = !reversedNodes;
+  }
+
+  // Change the edge data so that Query (Start node) and Target (End node) are on reverse strands
+  // NOTE: relative strand remain unchanged
+  void Edge::reverseStrand(void) {
+  	uint32_t tui32 = this->SStart;
+  	this->SStart = this->SLen - this->SEnd;
+  	this->SEnd = this->SLen - tui32;
+
+  	tui32 = this->EStart;
+  	this->EStart = this->ELen - this->EEnd;
+  	this->EEnd = this->ELen - tui32;
+
+  	this->calcEdgeStats();
+
+  }
+
+  void Edge::reverseStrandSNode(void) {
+  	this->ovl_bOrientation = !(this->ovl_bOrientation);
+
+  	uint32_t tui32 = this->SStart;
+  	this->SStart = this->SLen - this->SEnd;
+  	this->SEnd = this->SLen - tui32;
+
+  	this->calcEdgeStats();
+  }
+
+
+  void Edge::reverseStrandENode(void) {
+  	this->ovl_bOrientation = !(this->ovl_bOrientation);
+
+	uint32_t tui32 = this->EStart;
+  	this->EStart = this->ELen - this->EEnd;
+  	this->EEnd = this->ELen - tui32;
+
+  	this->calcEdgeStats();
   }
 
 
@@ -303,6 +383,8 @@ namespace scara {
   }
 
 
+  
+  // OLD VERSION:
   // KK: Since the architecture of the graph has been changed, we need to create 4 edges for each overlap
   // We have 2 nodes for each sequence (FW and RC), and need to create edges in both directions but only 
   // For appropriate node combinations
@@ -311,7 +393,7 @@ namespace scara {
   // Then we need to create edges for nodes Seq1 and Seq2 (both directions), and for nodes Seq1_RC and Seq2_RC (both directions)
   // 2. if we have overlap between seq1 and seq2, on different strand (relative strand from PAF = '-')
   // Then we need to create edges for nodes Seq1 and Seq2_RC (both directions), and for nodes Seq1_RC and Seq2 (both directions)
-  void createEdgesFromOverlap(std::shared_ptr<Overlap> ovl_ptr, MapIdToNode& mAnchorNodes, MapIdToNode& mReadNodes, std::vector<shared_ptr<Edge>> &vEdges) {
+  void createEdgesFromOverlap_OLD(std::shared_ptr<Overlap> ovl_ptr, MapIdToNode& mAnchorNodes, MapIdToNode& mReadNodes, std::vector<shared_ptr<Edge>> &vEdges) {
 
 	// startNodeName(i_ovl_ptr->ext_strName), endNodeName(i_ovl_ptr->ext_strTarget), ovl_ptr(i_ovl_ptr)
 
@@ -431,6 +513,126 @@ namespace scara {
   }
 
 
+  // KK: Since the architecture of the graph has been changed, we need to create 2 edges for each overlap
+  // Since the paths are generated from all contigs (anchop nodes), they will be generated only in direction
+  // RIGHT. If the nodes are connected, path should be generated between them. 
+  // We have 2 nodes for each sequence (FW and RC), and need to create edges in directions RIGHT but only 
+  // For appropriate node combinations
+  // Example:
+  // 1. if we have overlap between Seq1 and Seq2, on the same strand (relative strand from PAF = '+')
+  // Then we need to create edge for nodes Seq1 and Seq2 , and for nodes Seq1_RC and Seq2_RC
+  // 2. if we have overlap between Seq1 and Seq2, on different strands (relative strand from PAF = '-')
+  // Then we need to create edges for nodes Seq1 and Seq2_RC, and for nodes Seq1_RC and Seq2
+  void createEdgesFromOverlap(std::shared_ptr<Overlap> ovl_ptr, MapIdToNode& mAnchorNodes
+  							, MapIdToNode& mReadNodes, std::vector<shared_ptr<Edge>> &vEdges) {
+
+	// startNodeName(i_ovl_ptr->ext_strName), endNodeName(i_ovl_ptr->ext_strTarget), ovl_ptr(i_ovl_ptr)
+
+  	std::string startNodeName = ovl_ptr->ext_strName;
+  	std::string startNodeName_RC = getRCNodeName(ovl_ptr->ext_strName);
+  	std::string endNodeName = ovl_ptr->ext_strTarget;
+  	std::string endNodeName_RC = getRCNodeName(ovl_ptr->ext_strTarget);
+  	std::shared_ptr<Node> startNode, startNode_RC, endNode, endNode_RC;
+
+  	// KK: The assumption is that all of the nodes are already loaded
+  	// We are adding pointers to start and end node to each edge
+  	MapIdToNode::iterator it;
+
+  	// Look for START node in Anchor nodes
+  	it = mAnchorNodes.find(startNodeName);
+  	if (it != mAnchorNodes.end()) {
+  		startNode = it->second;
+  	}
+  	else {		// Now look in Read nodes
+  		it = mReadNodes.find(startNodeName);
+  		if (it != mReadNodes.end()) {
+  			startNode = it->second;
+  		}
+  		else {
+  			throw std::runtime_error(std::string("Error loading graph edges. Unknown node: ") + startNodeName);
+  		}
+  	}
+
+  	// Look for START node REVERSE COMPLEMENT in Anchor nodes
+  	// KK: This could be put in the previous code section, because original node and RC should be in the same node set
+  	it = mAnchorNodes.find(startNodeName_RC);
+  	if (it != mAnchorNodes.end()) {
+  		startNode_RC = it->second;
+  	}
+  	else {		// Now look in Read nodes
+  		it = mReadNodes.find(startNodeName_RC);
+  		if (it != mReadNodes.end()) {
+  			startNode_RC = it->second;
+  		}
+  		else {
+  			throw std::runtime_error(std::string("Error loading graph edges. Unknown node: ") + startNodeName_RC);
+  		}
+  	}
+
+  	// Look for END node in Anchor nodes
+  	it = mAnchorNodes.find(endNodeName);
+  	if (it != mAnchorNodes.end()) {
+  		endNode = it->second;
+  	}
+  	else {		// Now look in Read nodes
+  		it = mReadNodes.find(endNodeName);
+  		if (it != mReadNodes.end()) {
+  			endNode = it->second;
+  		}
+  		else {
+  			throw std::runtime_error(std::string("Error loading graph edges. Unknown node: ") + endNodeName);
+  		}
+  	}
+
+  	// Look for END node REVERSE COMPLEMENT in Anchor nodes
+  	it = mAnchorNodes.find(endNodeName_RC);
+  	if (it != mAnchorNodes.end()) {
+  		endNode_RC = it->second;
+  	}
+  	else {		// Now look in Read nodes
+  		it = mReadNodes.find(endNodeName_RC);
+  		if (it != mReadNodes.end()) {
+  			endNode_RC = it->second;
+  		}
+  		else {
+  			throw std::runtime_error(std::string("Error loading graph edges. Unknown node: ") + endNodeName_RC);
+  		}
+  	}
+
+  	// If relative overlap strand is +, edges are ctreated for (SNode, Enode) and (SNodeRC, ENodeRC)
+  	if (ovl_ptr->ext_bOrientation) {
+		// Create edge for both nodes on original strands
+		auto edge_ptr = make_shared<Edge>(startNodeName, startNode, endNodeName, endNode, ovl_ptr);
+		if (edge_ptr->QOH2 > edge_ptr->TOH2) edge_ptr->reverseNodes();		// If right overhang for query is larger than for target
+																			// Reverse nodes, we are extending start node only to the RIGHT
+		vEdges.emplace_back(edge_ptr);
+
+		// Creating the second Edge for both nodes on their respective RC strands
+		auto edge_ptr2 = make_shared<Edge>(startNodeName_RC, startNode_RC, endNodeName_RC, endNode_RC, ovl_ptr);
+		edge_ptr2->reverseStrand();
+		if (edge_ptr2->QOH2 > edge_ptr2->TOH2) edge_ptr2->reverseNodes();		// It right overhang for query is larger than for target
+																				// Reverse nodes, we are extending start node only to the RIGHT
+		vEdges.emplace_back(edge_ptr2);
+	}
+	// If relative strand is -, edges are created for (SNode, ENodeRC) and (SNodeRC, ENode)
+	else {
+		// (SNode, ENodeRC)
+		auto edge_ptr = make_shared<Edge>(startNodeName, startNode, endNodeName_RC, endNode_RC, ovl_ptr);
+		edge_ptr->reverseStrandENode();
+		if (edge_ptr->QOH2 > edge_ptr->TOH2) edge_ptr->reverseNodes();		// If right overhang for query is larger than for target
+																			// Reverse nodes, we are extending start node only to the RIGHT
+		vEdges.emplace_back(edge_ptr);
+
+		// (SNodeRC, ENode)
+		auto edge_ptr2 = make_shared<Edge>(startNodeName_RC, startNode_RC, endNodeName, endNode, ovl_ptr);
+		edge_ptr2->reverseStrandSNode();
+		if (edge_ptr2->QOH2 > edge_ptr2->TOH2) edge_ptr2->reverseNodes();		// It right overhang for query is larger than for target
+																				// Reverse nodes, we are extending start node only to the RIGHT
+		vEdges.emplace_back(edge_ptr2);
+	}
+  }
+
+
 
   Path::Path(std::shared_ptr<Edge> edge_ptr) :  edges()
   {
@@ -490,14 +692,14 @@ namespace scara {
   }
 
   // Return a reversed path, reverse order of edges and each edge
-  shared_ptr<Path> Path::reversedPath() {
+  shared_ptr<Path> Path::reversedPath(void) {
   	shared_ptr<Path> newPath = make_shared<Path>();
 
   	if (edges.size() > 0) {
   		for (int i = edges.size()-1; i >= 0; i--) {
   			shared_ptr<Edge> edge = edges[i];
   			shared_ptr<Edge> newEdge;
-        if (edge->reversed) {
+        if (edge->reversedNodes) {
           newEdge = make_shared<Edge>(edge->endNodeName, edge->endNode                  // If the edge is already reversed, create nonreversed version
   														, edge->startNodeName, edge->startNode, edge->ovl_ptr);   // by switching start and end nodes (and do not reverse it)
         }
@@ -513,93 +715,66 @@ namespace scara {
   	return newPath;
   }
 
+  std::string Path::toString(void){
+  	size_t size = this->edges.size();
+  	std::string strPath = "Nodes: " + std::to_string(size) + " | ";
+	if (size > 10) {
+		auto first = this->edges.front();
+		auto last  = this->edges.back();
+		strPath += "(" + first->startNodeName + ", " + first->endNodeName + ") ... ";
+		strPath += "(" + last->startNodeName + ", " + last->endNodeName + ")";
+	}
+	else {
+		for (auto const& t_edge_ptr : this->edges) {
+			strPath += "(" + t_edge_ptr->startNodeName + ", " + t_edge_ptr->endNodeName + ") ";
+		}	
+	}
 
+	return strPath; 
+  }
+
+
+  // Summary information about paths
+  // Used to later group paths by start and end node
   PathInfo::PathInfo(shared_ptr<Path> t_path_ptr) : path_ptr(t_path_ptr)
   {
-  	length = avgSI = 0.0;
-    length2 = 0;
+  	this->length = this->length2 = this->avgSI = 0.0;
+  	this->path_ptr = t_path_ptr;
     uint32_t negativeEScount = 0;
-  	uint32_t SNlen, SNbegin, SNend;
-  	uint32_t ENlen, ENbegin, ENend;
 
   	if (t_path_ptr->edges.size() > 0) {
-  		numNodes = t_path_ptr->edges.size() + 1;
+  		this->numNodes = t_path_ptr->edges.size() + 1;
   		shared_ptr<Edge> firstEdge = t_path_ptr->edges.front();
-  		// KK: Path info will retain original names of start and end sequences
-  		// REMINDER: for each sequence two nodes are created, for FW and RC relative strand
-  		// Node name for RC nodes has "_RC" at the end
-  		// PathInfo object will will use original sequence names so that paths can be grouped
-  		// together for the same sequence, regardless if its original or RC version of the sequence
-  		std::string rc_suffix = "_RC";		// TODO: move this to global parameters
-  		startNodeName = firstEdge->startNodeName;
-  		if (startNodeName.compare(startNodeName.size()-rc_suffix.size(), rc_suffix.size(), rc_suffix) == 0) {
-  			startNodeName.erase(startNodeName.size()-rc_suffix.size(), rc_suffix.size());
-  			// startNodeName = startNodeName.substr(0, startNodeName.size()-rc_suffix.size());
-  		}
-  		endNodeName = t_path_ptr->edges.back()->endNodeName;
-  		if (endNodeName.compare(endNodeName.size()-rc_suffix.size(), rc_suffix.size(), rc_suffix) == 0) {
-  			endNodeName.erase(endNodeName.size()-rc_suffix.size(), rc_suffix.size());
-  			// endNodeName = endNodeName.substr(0, endNodeName.size()-rc_suffix.size());
-  		}
-  		pathDir = D_LEFT;
-  		if (!(firstEdge->reversed) && (firstEdge->QES1 < firstEdge->QES2)) pathDir = D_RIGHT;
-  		if ( (firstEdge->reversed) && (firstEdge->TES1 < firstEdge->TES2)) pathDir = D_RIGHT;
-  		// Add the length of the first Node (start node of the first edge)
-  		if (!(firstEdge->reversed)) {
-  			length += firstEdge->ovl_ptr->ext_ulQLen;
-  		}
-  		else {
-  			length += firstEdge->ovl_ptr->ext_ulTLen;
-  		}
-	  	for (auto const& edge : t_path_ptr->edges) {
-	  		avgSI += edge->SI;
-	  		if (!(edge->reversed)) {
-	  			SNlen   = edge->ovl_ptr->ext_ulQLen;
-	  			SNbegin = edge->ovl_ptr->ext_ulQBegin;
-	  			SNend   = edge->ovl_ptr->ext_ulQEnd;
-	  			ENlen   = edge->ovl_ptr->ext_ulTLen;
-	  			ENbegin = edge->ovl_ptr->ext_ulTBegin;
-	  			ENend   = edge->ovl_ptr->ext_ulTEnd;
-	  		}
-	  		else {
-	  			SNlen   = edge->ovl_ptr->ext_ulTLen;
-	  			SNbegin = edge->ovl_ptr->ext_ulTBegin;
-	  			SNend   = edge->ovl_ptr->ext_ulTEnd;
-	  			ENlen   = edge->ovl_ptr->ext_ulQLen;
-	  			ENbegin = edge->ovl_ptr->ext_ulQBegin;
-	  			ENend   = edge->ovl_ptr->ext_ulQEnd;
-	  		}
+  		shared_ptr<Edge> lastEdge = t_path_ptr->edges.back();
+  		this->startNodeName = firstEdge->startNodeName;
+  		this->endNodeName = lastEdge->endNodeName;
+  		this->pathDir = D_LEFT;
+      	if (firstEdge->QES1 < firstEdge->QES2) this->pathDir = D_RIGHT;
 
-	  		// If the nodes are on different strands, switch the info (begin and end) for the end node
-	  		if (!(edge->ovl_ptr->ext_bOrientation)) {
-	  			uint32_t temp = ENend;
-	  			ENend = ENlen - ENbegin;
-	  			ENbegin = ENlen - temp;
-	  		}
+  		// NOTE: All edges should be extending the Query with the Target to the right
+  		// Correct values should be stored in the edge object
+  		// There should be no switching strands
+
+  		// Add the length of the first Node (start node of the first edge)
+  		this->length += firstEdge->SLen;
+	  	for (auto const& edge : t_path_ptr->edges) {
+	  		this->avgSI += edge->SI;
 	  		// For each edge, add to the length of the path part of the end node that 
 	  		// does not overlap with the start node (End overhang - start overhang)
-	        if (pathDir == D_RIGHT) {
-		  	  length += (ENlen - ENend) - (SNlen - SNend);
-	          if (SNbegin <= ENbegin) {
+	  		this->length += (edge->ELen - edge->EEnd) - (edge->SLen - edge->SEnd);
+	  		this->length2 += edge->SStart - edge->EStart;
+	  		
+	        if ((edge->SStart <= edge->EStart) || ((edge->ELen - edge->EEnd) <= (edge->SLen - edge->SEnd))){
 				  negativeEScount++;
-	          }
-	          length2 += SNbegin - ENbegin;
 	        }
-	        else {
-	          length += ENbegin - SNbegin;
-	          if (ENbegin <= SNbegin) {
-	            negativeEScount++;
-	       	  }
-	          length2 += (SNlen - SNend) - (ENlen - ENend);
-	        }
-	        // KK: If the overlapping sequences are on different strands (relative strand = '-')
-	        //     Switch direction for the following calculations
-	        if (!(edge->ovl_ptr->ext_bOrientation)) pathDir = oppositeDirection(pathDir);
-	  	}
-      length2 += ENlen;
-	  	avgSI /= t_path_ptr->edges.size();
-      if (negativeEScount > 0) 
-        throw std::runtime_error(std::string("SCARA BRIDGER: ERROR - path with negative extensions (" + std::to_string(negativeEScount) + ") SN(" + startNodeName + ") EN(" + endNodeName + ")"));
+	    }
+	    this->length2 += lastEdge->ELen;
+
+	  	this->avgSI /= t_path_ptr->edges.size();
+      	if (negativeEScount > 0) 
+         	throw std::runtime_error(std::string("SCARA BRIDGER: ERROR - path with negative extensions (" 
+        		+ std::to_string(negativeEScount) + ") SN(" + startNodeName + ") EN(" + endNodeName + ")"
+         		+ " - " + t_path_ptr->toString()));
   	}
   	else {
   		numNodes = 0;

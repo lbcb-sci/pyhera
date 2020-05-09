@@ -33,6 +33,10 @@ namespace scara {
 
   Direction oppositeDirection(Direction dir);
 
+  std::string getRCNodeName(const std::string nodeName);
+
+  std::string getOGNodeName(const std::string nodeName);
+
   class Node {
   public:
     NodeType nType;
@@ -64,9 +68,26 @@ namespace scara {
     std::shared_ptr<Node> endNode;
     std::shared_ptr<Overlap> ovl_ptr;
 
-    bool reversed;		// If the Edge is not reversed, startNode is Query and endNode is Target
-    					// If the Edge is reversed, its the opposite
+    /* From Overlap
+    uint32_t ext_ulQBegin;
+    uint32_t ext_ulQEnd;
+    uint32_t ext_ulQLen;
+    uint32_t ext_ulTBegin;
+    uint32_t ext_ulTEnd;
+    uint32_t ext_ulTLen;
+    bool ext_bOrientation; // true '+'
+    */
 
+    // Basic data from PAF file, copied from Overlap
+    uint32_t SLen;
+    uint32_t SStart;
+    uint32_t SEnd;
+    uint32_t ELen;
+    uint32_t EStart;
+    uint32_t EEnd;
+    bool ovl_bOrientation;
+
+    // Calculated data (Query = start node, target = end node)
     uint32_t QOH1;		// Query left overhang
     uint32_t QOH2;		// Query right overhang
     uint32_t TOH1;		// Target left overhang
@@ -83,15 +104,25 @@ namespace scara {
     float TES1;		// Extension score for extending Target with Query to the left
     float TES2;		// Extension score for extending Target with Query to the right
 
+    bool reversedNodes;	// Are start and end nodes reversed relative to the overlap object
+    					// In non-reversed edge start node is query and end node is target
+    					// In a reversed edge, it vice-versa
+
     Edge(std::string startNodeName, std::shared_ptr<Node> startNode, std::string endNodeName, std::shared_ptr<Node> endNode, std::shared_ptr<Overlap> ovl_ptr);
 
     Edge(std::shared_ptr<Overlap> ovl_ptr, MapIdToNode& mAnchorNodes, MapIdToNode& mReadNodes);
 
     Edge(std::shared_ptr<Overlap> ovl_ptr);
 
+    void copyDataFromOverlap();
+
     void reverseNodes(void);
+    void reverseStrand(void);
+    void reverseStrandSNode(void);
+    void reverseStrandENode(void);
 
     int test(void);
+
   };
 
   // KK: Since the architecture of the graph has been changed, we need to create 4 edges for each overlap
@@ -152,7 +183,9 @@ namespace scara {
     void appendEdge(std::shared_ptr<Edge> edge_ptr);
     std::shared_ptr<Edge> removeLastEdge(void);
 
-    shared_ptr<Path> reversedPath();
+    shared_ptr<Path> reversedPath(void);
+
+    std::string toString(void);
   };
 
 

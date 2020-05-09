@@ -56,7 +56,8 @@ namespace scara {
     }
   }
 
-  void Overlap::GetExtensionPosition(uint32_t& ulBegin, uint32_t& ulEnd) {
+
+   void Overlap::GetExtensionPosition(uint32_t& ulBegin, uint32_t& ulEnd) {
     if ((ext_oType == ET_PREFIX && ext_bOrientation) || (ext_oType == ET_SUFFIX && !ext_bOrientation)) {
       ulBegin = 0; ulEnd = ext_ulQEnd;
     } else {
@@ -64,7 +65,7 @@ namespace scara {
     }
   }
 
-  // Check is an Overlap is suitable to be used as and Edge
+  // Check is an Overlap is suitable to be used as an Edge
   bool Overlap::Test() {
   	return true;
   }

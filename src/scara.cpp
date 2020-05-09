@@ -58,7 +58,7 @@ void setGlobalParameters() {
   scara::maxMCIterations = 10000;
 
   // Minimum sequence identity for filtering overlaps
-  scara::SImin = 0.30;
+  scara::SImin = 0.50;
   // Maximum allowed overhang percentage for filtering overlaps
   scara::OHmax = 0.30;
 
@@ -104,8 +104,8 @@ void print_help_message_and_exit() {
     "\n-f (--folder)     specify input folder for ScaRa"
     "\n-r (--reads)      specify reads file for ScaRa"
     "\n-c (--contigs)    specify contigs file ScaRa"
-    "\n-o (--overlapsRC)   specify overlaps file for ScaRa"
-    "\n-s (--overlapsRR)   specify overlaps file for ScaRa"
+    "\n-o (--overlapsRC)   specify contig-read overlaps file for ScaRa"
+    "\n-s (--overlapsRR)   specify read self overlaps file for ScaRa"
     "\n-m (--multithreading)   use multithreading"
     "\n-v (--version)    print program version"
     "\n-h (--help)       print this help message\n";
@@ -211,11 +211,16 @@ int main(int argc, char **argv)
   current_time = std::time(nullptr);
   std::cerr << "\nSCARA: Finished generating paths: " << std::asctime(std::localtime(&current_time)) << (current_time - start_time) << " seconds since the start\n";
   std::cerr << "\nSCARA: Paths generated: " << numPaths;
+
+  std::cerr << "\nSCARA: printing paths:";
+  sbridger.printPaths();
+
   std::cerr << "\nSCARA: Grouping and processing paths:";
 
   int numGroups = sbridger.groupAndProcessPaths();
 
   current_time = std::time(nullptr);
+
   std::cerr << "\nSCARA: Finished grouping and processing paths: " << std::asctime(std::localtime(&current_time)) << (current_time - start_time) << " seconds since the start\n";
   std::cerr << "\nSCARA: Final number of path groups: " << numGroups;
   std::cerr << "\nSCARA: Generating sequences:";

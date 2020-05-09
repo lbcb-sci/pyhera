@@ -45,4 +45,14 @@ namespace scara {
       }
     }
   }
+
+  extern void parseProcessPaf(const std::string& strPaf, VecOvl& vOvl) {
+    vector<unique_ptr<scara::Overlap>> aExtensions;
+    auto pafParser = bioparser::createParser<bioparser::PafParser, Overlap>(strPaf);
+    pafParser->parse_objects(aExtensions, -1);
+
+    for (uint32_t i = 0; i < aExtensions.size(); i++) {
+      vOvl.emplace_back(std::move(aExtensions[i]));
+    }
+  }
 }

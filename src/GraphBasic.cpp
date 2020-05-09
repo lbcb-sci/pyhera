@@ -58,14 +58,14 @@ namespace scara {
   // Return a reverse complement node name, it the original name ends with _RC, remove _RC from the end
   // Otherwise, ad _RC at the end
   std::string getRCNodeName(const std::string nodeName) {
-  	if (nodeName.rfind("_RC") != nodeName.size() - 4) return nodeName + "_RC";
+  	if (nodeName.rfind("_RC") != nodeName.size() - 3) return nodeName + "_RC";
   	else return nodeName.substr(0, nodeName.size()-3);
   }
 
 
   // Return an original node name, without _RC at the end
   std::string getOGNodeName(const std::string nodeName) {
-  	if (nodeName.rfind("_RC") != nodeName.size() - 4) return nodeName;
+  	if (nodeName.rfind("_RC") != nodeName.size() - 3) return nodeName;
   	else return nodeName.substr(0, nodeName.size()-3);
   }
 

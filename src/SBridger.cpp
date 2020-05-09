@@ -486,9 +486,9 @@ namespace scara {
 	  				// Copy relevant part of the string
 	  				uint32_t k=0;
 	  				for (; k<seq_part_size; k++) {
-	  					seq_part[k] = (startNode->seq_ptr->seq_strData)[seq_part_start+k];
+	  					seq_part += (startNode->seq_ptr->seq_strData)[seq_part_start+k];
 	  				}
-	  				seq_part[k] = '\0';
+	  				// seq_part[k] = '\0';
 	  			} else {
 	  				// If the strand is reverse, go from the end of the string and rev
 	  				uint32_t k=0;
@@ -496,7 +496,7 @@ namespace scara {
 	  					uint32_t seq_end = (startNode->seq_ptr->seq_strData).length();
 	  					seq_part += _bioBaseComplement((startNode->seq_ptr->seq_strData)[seq_end-seq_part_start-k-1]);
 	  				}
-	  				seq_part[k] = '\0';
+	  				// seq_part[k] = '\0';
 	  			}
 
 	  			// Output the sequence part to the standard output
@@ -520,6 +520,12 @@ namespace scara {
   			cout << _bioReverseComplement(lastEndNode->seq_ptr->seq_strData) << endl;
   		} 
   	}
+
+  	cerr << "\nSCARA BRIDGER: User contigs: ";
+  	for (auto const& usedContig : usedContigs) {
+  		cerr << usedContig + ", ";
+  	}
+  	cerr << endl;
 
   	cerr << "SCARA BRIDGER: Printing sequences for unsued contigs! There are " << (mAnchorNodes.size() - usedContigs.size());
   	cerr << " unused contigs!" << endl;

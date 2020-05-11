@@ -1,11 +1,5 @@
 # Scaffolding with ScaRa
-This repository contains python scripts and binaries comprising our ScaRa tools for genome scaffolding.
-
-__DISCLAIMER__: The tool is still under development and any feedback on it is very welcome and will be greatly appreciated. We also do not recommend running it on larger genome since it is run on a single thread, is not optimised and might run for a long time. We are currently working on parallelizing all major processes.
-
-ScaRa is based on Ezra scaffolding tool (http://complex.zesoi.fer.hr/data/pdf/Ivan_Krpelnik_diplomski.pdf) and uses come concepts from the HERA scaffolder paper (https://www.biorxiv.org/content/early/2018/06/13/345983). It consists of two phases, extension phase and bridging phase, each can be run multiple time. Extension phase uses MSA (Multiple Sequence Alignment) and POA (Partial OrderAlignment) graphs, while bridging phase constructs paths betwewen contigs using reads that overlap and then tries to determine the best path.
-
-ScaRa uses Minimap2 to generate everlaps as needed, and can use Racon to correct the contigs at the start, et the end od after each iteration of the scaffolding process.
+ScaRa is our scaffolding tool that uses come concepts from the HERA scaffolder paper (https://www.biorxiv.org/content/early/2018/06/13/345983). This repository contains both Python and C++ implementations.
 
 ## Installation
 
@@ -15,48 +9,51 @@ ScaRa uses Minimap2 to generate everlaps as needed, and can use Racon to correct
   
   __Note:__ if you omitted `<--recursive>` from `<git clone>`, run `<git submodule update --init --recursive>` before proceeding.
   
-  2. Build Ezra
+  After cloning, Python scripts are ready to go.
   
-    cd Ezra
+  2. Building C++ version
+  
     mkdir build
     cd build
     cmake ..
     make
 
-  3. Build Minimap2
-  
-    cd Minimap2
-    make
-
-  4. Build Racon
-  
-    cd racon
-    mkdir build
-    cd build
-    cmake -DCMAKE_BUILD_TYPE=Release ..
-    make
-
-Pythons scripts, such as Bridger, ScaRa and Samscripts tool do not need to be installed.
-
 ### Dependencies
-Python scripts require PYthon2.7. Ezra and Racon require CMake 3.5.
+Python scripts require PYthon2.7. C++ version requires CMake 3.5.
 
-## Running ScaRa
-ScaRa is run using `<scara.py>` script from the root folder of the repository.
+## Running Python version
+ScaRa is run using `<bridger.py>` script from the root folder of the repository. Running the script without arguments will print out a help message. The script should be run wtith the first parameter set to `scaffold` in the following way:
 
-A basic command for running ScaRa:
+    bridger.py scaffold <contigs FASTA> <reads FASTA> <reads-contigs overlaps PAF/SAM> <reads-reads overlaps PAF/SAM options
+    options:"
+    -o (--output) <file> : output file to which the report will be written
 
-    python scara.py contigs.fasta reads.fastq --results results_folder
+## Running C++ version
+C++ executable should be in the build folder. Running it without arguments will print out following help message.
 
-Available options will be printed out when running the script without arguments.
+    How to run ScaRa :
+    ScaRa -f (--folder) <Input folder>
+        or
+    ScaRa -r <Reads file> -c <Contigs file> -o <Reads to Contigs Overlaps file> -s <Reads to Reds Overlaps file>
+        The program will perform one iteration of the algorithm
+        and output contigs to the standard output!.
+        <Input foder> must contain the following files:
+        - reads.fastq - reads in FASTQ/FASTA format
+        - readsToContigs.paf - overlaps between reads and contigs
+        - readsToReads.paf - overlaps between reads
+        - contigs.fasta - contigs in FASTA format
+    If Reads file, Contigs file or Overlaps are specified,
+    they will not be looked for in the Input folder!
+    Options:
+    -f (--folder)     specify input folder for ScaRa
+    -r (--reads)      specify reads file for ScaRa
+    -c (--contigs)    specify contigs file ScaRa
+    -o (--overlapsRC)   specify contig-read overlaps file for ScaRa
+    -s (--overlapsRR)   specify read self overlaps file for ScaRa
+    -m (--multithreading)   use multithreading
+    -v (--version)    print program version
+    -h (--help)       print this help message
 
-The scaffolding will run  in several iterations for more complete and correct scaffolding. The script will generate a separate folder for each iteration of scffolding. The final result will be in the root results folder named `<scara_scaffolds_final.fasta>`.
 
-__Racon__
-ScaRa script can also be instructed run Racon on the initial contigs, on the final scaffolds and after each iteration of scaffolding. This can be specified using options:
-  - `<--racon-start>` - run racon on the initial contigs, before scaffolding
-  - `<--racon-end>`   - run racon on the final scaffold
-  - `<--racon>`       - run racon after each iteration
-
-__Minimap2__
-ScaRa will run Minimap2 to calcualte overlaps as needed for the scaffolding and also for Racon.
+## OLD ScaRa 
+Old ScaRa README (containing only the Python version) can be found at [OLD ScaRa](https://github.com/lbcb-sci/ScaRa/blob/master/SCARA_OLD.md)

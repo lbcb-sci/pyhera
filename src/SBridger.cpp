@@ -521,17 +521,19 @@ namespace scara {
   		} 
   	}
 
-  	cerr << "\nSCARA BRIDGER: User contigs: ";
+  	cerr << "\nSCARA BRIDGER: Used contigs: ";
   	for (auto const& usedContig : usedContigs) {
   		cerr << usedContig + ", ";
   	}
   	cerr << endl;
 
   	cerr << "SCARA BRIDGER: Printing sequences for unsued contigs! There are " << (mAnchorNodes.size() - usedContigs.size());
-  	cerr << " unused contigs!" << endl;
+  	cerr << " potentially unused contigs!" << endl;
 	for (auto const& aNodePair : mAnchorNodes) {
 		auto aNode = aNodePair.second;
-		if (usedContigs.find(aNode->nName) == usedContigs.end()) {
+		std::string nodeNameOG = getOGNodeName(aNode->nName);
+		// Print only original unused contigs, and not RC ones that were generated 
+		if ((aNode->nName == nodeNameOG) && (usedContigs.find(aNode->nName) == usedContigs.end())) {
 			cout << ">" << aNode->nName << endl;
 			cout << aNode->seq_ptr->seq_strData << endl;
 		}

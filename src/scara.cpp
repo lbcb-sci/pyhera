@@ -1,6 +1,6 @@
 #include <iostream>
 #include <vector>
-// #include <string>
+#include <string>
 #include <memory>
 #include <map>
 #include <fstream>
@@ -30,13 +30,13 @@ namespace scara {
 int multithreading;
 
 uint32_t MinMCPaths, HardNodeLimit, SoftNodeLimit;
-uint32_t numDFSNodes, maxMCIterations;
+uint32_t NumDFSNodes, MaxMCIterations;
 uint32_t MinPathsinGroup;
 float SImin, OHmax;
 
 bool test_short_length, test_contained_reads, test_low_quality;
 bool print_output;
-double pathGroupHalfSize;
+double PathGroupHalfSize;
 
 std::string logFile;
 
@@ -89,15 +89,15 @@ void setGlobalParameters() {
   scara::SoftNodeLimit = 100;
 
   // A number of nodes added to the stack in each step of DFS graph traversal
-  scara::numDFSNodes = 5;
+  scara::NumDFSNodes = 5;
   // Maximum number of iterations using Monte Carlo approach
-  scara::maxMCIterations = 100000;
+  scara::MaxMCIterations = 100000;
 
   // A minimum number of paths in a group that will generate a scaffold
   scara::MinPathsinGroup = 3;
 
   // Minimum sequence identity for filtering overlaps
-  scara::SImin = 0.75;
+  scara::SImin = 0.60;
   // Maximum allowed overhang percentage for filtering overlaps
   scara::OHmax = 0.25;
 
@@ -110,7 +110,7 @@ void setGlobalParameters() {
   scara::print_output = true;
 
   // A path is placed in a group if its length falls within pathGtoupHalfSize of groups representative length
-  scara::pathGroupHalfSize = 5000;
+  scara::PathGroupHalfSize = 5000;
 
   // Setting default Debugg level
   scara::globalDebugLevel = DL_INFO;
@@ -147,7 +147,7 @@ void print_help_message_and_exit() {
     "\n    - contigs.fasta - contigs in FASTA format"
     "\nIf Reads file, Contigs file or Overlaps are specified,"
 	  "\nthey will not be looked for in the Input folder!"
-    "\nOptions:"
+    "\nGeneral options:"
     "\n-f (--folder)     specify input folder for ScaRa"
     "\n-r (--reads)      specify reads file for ScaRa"
     "\n-c (--contigs)    specify contigs file ScaRa"
@@ -158,6 +158,18 @@ void print_help_message_and_exit() {
     "\n 					the amount of output the program generates to stderr"
     "\n 					level can be set to values 0 - 3, with 0 being the least"
     "\n           and 3 being the most verbose"
+    "\n________________________________________________________________________"
+    "\nAlgorithm parameter options:"
+    "\npMinMCPaths - minimum number of paths that will try to be generated using"
+    "\n              Monte Carlo method (defult 40)."
+    "\npMAXMCIterations - maximum nbumber of iterations during Monte Carlo (defualt 100000)"
+    "\npHardNodeLimit - a maximum number of nodes in a path (defult 1000)"
+    "\npNumDFSNodes - a number of nodes that will be placed on the stack during"
+    "\n               DSF search of the graph (defult 5)"
+    "\npMinPathsInGroup - a minimum number of paths in a path group (default 3)"
+    "\npPathGroupHalfSize - a size of a bucket in which paths are grouped"
+    "\n                     according to their length (default 5000)"
+    "\n________________________________________________________________________"
     "\n-v (--version)    print program version"
     "\n-h (--help)       print this help message\n";
 
@@ -169,6 +181,7 @@ int main(int argc, char **argv)
 {
 
   // KK: Defining basic program nOptions
+  int pMinMCPaths, pMaxMCIterations, pHardNodeLimit, pNumDFSNodes, pMinPathsInGroup, pPathGroupHalfSize;
   const char* const short_opts = "hvr:c:o:s:f:mD:";
   const option long_opts[] = {
     {"help", no_argument, NULL, 'h'},
@@ -180,6 +193,12 @@ int main(int argc, char **argv)
     {"overlapsRR", required_argument, NULL, 's'},
     {"multithreading", no_argument, NULL, 'm'},
     {"debug_level", required_argument, NULL, 'D'},
+    {"pMinMCPaths", required_argument, &pMinMCPaths, 0},
+    {"pMAXMCIterations", required_argument, &pMaxMCIterations, 0},
+    {"pHardNodeLimit", required_argument, &pHardNodeLimit, 0},
+    {"pNumDFSNodes", required_argument, &pNumDFSNodes, 0},
+    {"pMinPathsInGroup", required_argument, &pMinPathsInGroup, 0},
+    {"pPathGroupHalfSize", required_argument, &pPathGroupHalfSize, 0},
     {NULL, no_argument, NULL, 0}
   };
 
@@ -228,7 +247,18 @@ int main(int argc, char **argv)
     case 'D':
       scara::globalDebugLevel = debugLevelFromString(optarg);
       break;
+    case 0:
+      if (pMinMCPaths) scara::MinMCPaths = stoi(optarg);
+      if (pMaxMCIterations) scara::MaxMCIterations = stoi(optarg);
+      if (pHardNodeLimit) scara::HardNodeLimit = stoi(optarg);
+      if (pNumDFSNodes) scara::NumDFSNodes = stoi(optarg);
+      if (pMinPathsInGroup) scara::MinPathsinGroup = stoi(optarg);
+      if (pPathGroupHalfSize) scara::PathGroupHalfSize = stoi(optarg);
+      break;
+    default:
+      print_help_message_and_exit();
     }
+
 
   if (argc < 2 || readsSet == 0 || contigsSet == 0 || RCOverlapsSet == 0 || RROverlapsSet == 0) {
      std::cerr << "\nNot all arguments specified!";

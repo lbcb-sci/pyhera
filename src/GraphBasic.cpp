@@ -708,7 +708,7 @@ namespace scara {
     // New path belong in the group in original orientation
     if ((pinfo_ptr->startNodeName.compare(this->startNodeName) == 0) &&
         (pinfo_ptr->endNodeName.compare(this->endNodeName) == 0) &&
-        (fabs(pinfo_ptr->length - this->length) <= scara::pathGroupHalfSize)) equal = true;
+        (fabs(pinfo_ptr->length - this->length) <= scara::PathGroupHalfSize)) equal = true;
 
     /*
     // New path belongs in the group in reverse orientation

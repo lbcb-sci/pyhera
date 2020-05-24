@@ -14,7 +14,7 @@ namespace scara {
 	extern int multithreading;
 
 	extern uint32_t MinMCPaths, HardNodeLimit, SoftNodeLimit;
-	extern uint32_t numDFSNodes, maxMCIterations;
+	extern uint32_t NumDFSNodes, MaxMCIterations;
 	extern uint32_t MinPathsinGroup;
 	extern float SImin, OHmax;
 
@@ -22,7 +22,7 @@ namespace scara {
 
 	extern bool print_output;
 
-	extern double pathGroupHalfSize;
+	extern double PathGroupHalfSize;
 
 	extern std::string logFile;
 

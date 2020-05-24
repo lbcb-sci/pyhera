@@ -95,7 +95,7 @@ namespace scara {
   	 */
   	std::set<std::string> readsUsed;
   	// uint32_t numNodes = 10;		// Number of nodes placed on the stack in each step of graph traversal
-  	uint32_t numNodes = scara::numDFSNodes;
+  	uint32_t numNodes = scara::NumDFSNodes;
 
   	if (scara::print_output)
   		std::cerr << "\nSCARA: Generating deterministic paths: ";
@@ -215,9 +215,9 @@ namespace scara {
   	 * Currently placing read names in a set
   	 * It might be more efficient if Node pointers were used!
   	 */
-  	uint32_t maxIterations = scara::maxMCIterations;
+  	uint32_t maxIterations = scara::MaxMCIterations;
   	uint32_t iteration = 0;
-  	uint32_t numNodes = scara::numDFSNodes;
+  	uint32_t numNodes = scara::NumDFSNodes;
 
   	// Setting up random number generator
   	std::random_device rd;
@@ -375,7 +375,7 @@ namespace scara {
   	 */
   	uint32_t maxIterations = maxNumIterations;
   	uint32_t iteration = 0;
-  	uint32_t numNodes = scara::numDFSNodes;
+  	uint32_t numNodes = scara::NumDFSNodes;
 
   	// Setting up random number generator
   	std::random_device rd;

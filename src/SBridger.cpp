@@ -726,24 +726,13 @@ namespace scara {
   	if (scaff1->size() == 0 && scaff2->size() == 0) {
   		throw std::runtime_error(std::string("SCARA BRIDGER: ERROR - Scaffolds of size 0"));
   	}
-	std::cerr << "\nSCARA Test: comaparing scaffolds:";
-  	std::cerr << "\nSCAFFOLD 1: " << scaff1->size();
-	for (auto const& pgroup_ptr : (*scaff1)) {
-		std::cerr << pgroup_ptr->startNodeName << " --> " << pgroup_ptr->endNodeName << "(" << pgroup_ptr->numPaths << "), ";
-	}
-	std::cerr << "\nSCAFFOLD 2: " << scaff2->size();
-	for (auto const& pgroup_ptr : (*scaff2)) {
-		std::cerr << pgroup_ptr->startNodeName << " --> " << pgroup_ptr->endNodeName << "(" << pgroup_ptr->numPaths << "), ";
-	}
-  	uint32_t size = scaff1->size();
-  	std::cerr << "\nSize = " << size;
   	for (uint32_t i=0; i<size; i++) {
   		std::string sname1 = (*scaff1)[i]->startNodeName;
   		std::string ename1 = (*scaff1)[i]->endNodeName;
   		std::string sname2 = (*scaff2)[size-1-i]->startNodeName;
   		std::string ename2 = (*scaff2)[size-1-i]->endNodeName;
 
-  		std::cerr << "\nSCARA Test: i=" << i << ": " << sname1 << " and " << ename2 << ", " << sname2 << " and " << sname2;
+  		// std::cerr << "\nSCARA Test: i=" << i << ": " << sname1 << " and " << ename2 << ", " << sname2 << " and " << sname2;
 
   		if ((sname1 != getRCNodeName(ename2)) || (ename1 != getRCNodeName(sname2))) return false;
   	}

@@ -3,6 +3,8 @@
 #include "Sequence.h"
 #include "Overlap.h"
 
+#include <iostream>
+
 #include <unordered_set>
 
 namespace scara {
@@ -13,7 +15,12 @@ namespace scara {
     auto fastqParser = bioparser::createParser<bioparser::FastqParser, scara::Sequence>(strFastq);
     fastqParser->parse_objects(aReads, -1);
     for (uint32_t i = 0; i < aReads.size(); i++) {
-      mIdToSeq.emplace(aReads[i]->seq_strName, std::move(aReads[i]));
+      // Loosing quals, to save space
+      // KK: Since I'm a newb and don know how exactly this works, I'm extending length by 1, for \0 in case its needed
+      unique_ptr<Sequence> newSeq_ptr = make_unique<Sequence>(aReads[i]->seq_strName.c_str(), (uint32_t)(aReads[i]->seq_strName.length()),
+                                                              aReads[i]->seq_strData.c_str(), (uint32_t)(aReads[i]->seq_strData.length()));
+
+      mIdToSeq.emplace(newSeq_ptr->seq_strName, std::move(newSeq_ptr));
     }
   }
 

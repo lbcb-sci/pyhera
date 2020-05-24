@@ -62,21 +62,14 @@ namespace scara {
   	void calcEdgeStats();
 
   public:
-    std::string startNodeName;
-    std::shared_ptr<Node> startNode;
-    std::string endNodeName;
-    std::shared_ptr<Node> endNode;
-    std::shared_ptr<Overlap> ovl_ptr;
+    // KK: removing names for efficiency
+    // std::string startNodeName;				// Start Node is Query
+    // std::string endNodeName;       // End Node is Target
 
-    /* From Overlap
-    uint32_t ext_ulQBegin;
-    uint32_t ext_ulQEnd;
-    uint32_t ext_ulQLen;
-    uint32_t ext_ulTBegin;
-    uint32_t ext_ulTEnd;
-    uint32_t ext_ulTLen;
-    bool ext_bOrientation; // true '+'
-    */
+    std::shared_ptr<Node> startNode;    
+    std::shared_ptr<Node> endNode;
+
+    // TODO: Refactor the code to use either start and end terminolgy or query and target
 
     // Basic data from PAF file, copied from Overlap
     uint32_t SLen;
@@ -86,6 +79,10 @@ namespace scara {
     uint32_t EStart;
     uint32_t EEnd;
     bool ovl_bOrientation;
+
+    uint32_t paf_matching_bases;
+    uint32_t paf_overlap_length;
+    uint32_t paf_mapping_quality;
 
     // Calculated data (Query = start node, target = end node)
     uint32_t QOH1;		// Query left overhang
@@ -104,17 +101,21 @@ namespace scara {
     float TES1;		// Extension score for extending Target with Query to the left
     float TES2;		// Extension score for extending Target with Query to the right
 
-    bool reversedNodes;	// Are start and end nodes reversed relative to the overlap object
-    					// In non-reversed edge start node is query and end node is target
-    					// In a reversed edge, it vice-versa
 
-    Edge(std::string startNodeName, std::shared_ptr<Node> startNode, std::string endNodeName, std::shared_ptr<Node> endNode, std::shared_ptr<Overlap> ovl_ptr);
+    Edge(std::shared_ptr<Node> startNode, std::shared_ptr<Node> endNode, std::unique_ptr<Overlap> const& ovl_ptr);
 
-    Edge(std::shared_ptr<Overlap> ovl_ptr, MapIdToNode& mAnchorNodes, MapIdToNode& mReadNodes);
+    Edge(std::unique_ptr<Overlap> const& ovl_ptr, MapIdToNode& mAnchorNodes, MapIdToNode& mReadNodes);
 
-    Edge(std::shared_ptr<Overlap> ovl_ptr);
+    Edge(std::unique_ptr<Overlap> const& ovl_ptr);
 
-    void copyDataFromOverlap();
+  	Edge();						// Create an empty Edge
+
+    std::shared_ptr<Edge> getReversedEdge();
+
+    std::string getStartNodeName();
+    std::string getEndNodeName();
+
+    void copyDataFromOverlap(std::unique_ptr<Overlap> const& ovl_ptr);
 
     void reverseNodes(void);
     void reverseStrand(void);
@@ -133,41 +134,10 @@ namespace scara {
   // Then we need to create edges for nodes Seq1 and Seq2 (both directions), and for nodes Seq1_RC and Seq2_RC (both directions)
   // 2. if we have overlap between seq1 and seq2, on different strand (relative strand from PAF = '-')
   // Then we need to create edges for nodes Seq1 and Seq2_RC (both directions), and for nodes Seq1_RC and Seq2 (both directions)
-  void createEdgesFromOverlap(std::shared_ptr<Overlap> ovl_ptr, MapIdToNode& mAnchorNodes, MapIdToNode& mReadNodes, std::vector<shared_ptr<Edge>> &vEdges);
+  void createEdgesFromOverlap(std::unique_ptr<Overlap> const& ovl_ptr, MapIdToNode& mAnchorNodes
+                            , MapIdToNode& mReadNodes, std::vector<shared_ptr<Edge>> &vEdges);
 
 
-
-  /*
-   * KK: OBSOLETE
-   *
-  // KK: A class for comparing Edges according to OS score (for use with the priority queue)
-  class EdgeCompareOS {
-  public:
-  	bool operator()(const std::shared_ptr<Edge> &E1, const shared_ptr<Edge> &E2) const
-  	{
-  		return (E1->OS < E2->OS);
-  	};
-  };
-
-  // KK: A class for comparing Edges according to ES score to the left (for use with the priority queue)
-  class EdgeCompareESright {
-  public:
-  	bool operator()(const std::shared_ptr<Edge> &E1, const shared_ptr<Edge> &E2) const
-  	{
-  		return (E1->TES1 < E2->TES1);
-  	};
-  };
-
-  // KK: A class for comparing Edges according to ES score to the right (for use with the priority queue)
-  class EdgeCompareESright {
-  public:
-  	bool operator()(const std::shared_ptr<Edge> &E1, const shared_ptr<Edge> &E2) const
-  	{
-  		return (E1->TES2 < E2->TES2);
-  	};
-  };
-  */
-  
 
   class Path {
   public:
@@ -195,12 +165,12 @@ namespace scara {
   int checkPath(shared_ptr<Path> path);
 
   int generatePathsDeterministic(std::vector<shared_ptr<Path>> &vPaths, MapIdToNode &aNodes, PathGenerationType pgType);
-  int generatePaths_MC(std::vector<shared_ptr<Path>> &vPaths, MapIdToNode &aNodes, int minNumPaths);
+  int generatePaths_MC(std::vector<shared_ptr<Path>> &vPaths, MapIdToNode &aNodes, uint32_t minNumPaths);
 
-  int generatePathsForNode_MC(std::vector<shared_ptr<Path>> &vPaths, shared_ptr<Node> aNode, int minNumPaths, int maxNumIterations);
+  int generatePathsForNode_MC(std::vector<shared_ptr<Path>> &vPaths, shared_ptr<Node> aNode, uint32_t minNumPaths, uint32_t maxNumIterations);
 
  
-  shared_ptr<vector<shared_ptr<Edge>>> getBestNEdges(vector<shared_ptr<Edge>> &edges, uint32_t N, PathGenerationType pgType);
+  unique_ptr<vector<shared_ptr<Edge>>> getBestNEdges(vector<shared_ptr<Edge>> &edges, uint32_t N, PathGenerationType pgType);
 
 
   class PathInfo {

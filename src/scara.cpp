@@ -9,7 +9,12 @@
 #include <iterator>
 #include <unordered_set>
 
-# include <ctime>
+#include <unistd.h>
+#include <ios>
+#include <ctime>
+
+#include <sys/time.h>
+#include <sys/resource.h>
 
 #include <getopt.h>
 
@@ -24,8 +29,9 @@ namespace scara {
 
 int multithreading;
 
-int MinMCPaths, HardNodeLimit, SoftNodeLimit;
-int numDFSNodes, maxMCIterations;
+uint32_t MinMCPaths, HardNodeLimit, SoftNodeLimit;
+uint32_t numDFSNodes, maxMCIterations;
+uint32_t MinPathsinGroup;
 float SImin, OHmax;
 
 bool test_short_length, test_contained_reads, test_low_quality;
@@ -37,6 +43,36 @@ std::string logFile;
 DebugLevel globalDebugLevel;
 }
 
+// For tracking memory usage withing the program
+// Taken from:
+// https://www.tutorialspoint.com/how-to-get-memory-usage-at-runtime-using-cplusplus
+void mem_usage(double& vm_usage, double& resident_set) {
+   vm_usage = 0.0;
+   resident_set = 0.0;
+   ifstream stat_stream("/proc/self/stat",ios_base::in); //get info from proc directory
+   //create some variables to get info
+   string pid, comm, state, ppid, pgrp, session, tty_nr;
+   string tpgid, flags, minflt, cminflt, majflt, cmajflt;
+   string utime, stime, cutime, cstime, priority, nice;
+   string O, itrealvalue, starttime;
+   unsigned long vsize;
+   long rss;
+   stat_stream >> pid >> comm >> state >> ppid >> pgrp >> session >> tty_nr
+   >> tpgid >> flags >> minflt >> cminflt >> majflt >> cmajflt
+   >> utime >> stime >> cutime >> cstime >> priority >> nice
+   >> O >> itrealvalue >> starttime >> vsize >> rss; // don't care about the rest
+   stat_stream.close();
+   long page_size_kb = sysconf(_SC_PAGE_SIZE) / 1024; // for x86-64 is configured to use 2MB pages
+   vm_usage = vsize / 1024.0;
+   resident_set = rss * page_size_kb;
+}
+
+void print_mem_usage(std::string location) {
+   double vm, rss;
+   mem_usage(vm, rss);
+   cerr << "\nMemory usage at: " << location;
+   cerr << "\nVirtual Memory: " << vm << "\nResident set size: " << rss << endl;
+}
 
 // Setting global parameters, variables are defined in globals.h
 void setGlobalParameters() {
@@ -55,12 +91,15 @@ void setGlobalParameters() {
   // A number of nodes added to the stack in each step of DFS graph traversal
   scara::numDFSNodes = 5;
   // Maximum number of iterations using Monte Carlo approach
-  scara::maxMCIterations = 10000;
+  scara::maxMCIterations = 100000;
+
+  // A minimum number of paths in a group that will generate a scaffold
+  scara::MinPathsinGroup = 3;
 
   // Minimum sequence identity for filtering overlaps
-  scara::SImin = 0.50;
+  scara::SImin = 0.75;
   // Maximum allowed overhang percentage for filtering overlaps
-  scara::OHmax = 0.30;
+  scara::OHmax = 0.25;
 
   scara::test_short_length = true;
   scara::test_contained_reads = true;
@@ -71,13 +110,21 @@ void setGlobalParameters() {
   scara::print_output = true;
 
   // A path is placed in a group if its length falls within pathGtoupHalfSize of groups representative length
-  scara::pathGroupHalfSize = 1000;
+  scara::pathGroupHalfSize = 5000;
 
   // Setting default Debugg level
-  scara::globalDebugLevel = DL_DEBUG;
+  scara::globalDebugLevel = DL_INFO;
 
   // Setting Log file
   scara::logFile = "scaraLog.txt";
+}
+
+DebugLevel debugLevelFromString(std::string str) {
+	if (str == "0") return DL_NONE;
+	else if (str == "1") return DL_INFO;
+	else if (str == "2") return DL_VERBOSE;
+	else if (str == "3") return DL_DEBUG;
+	else return DL_NONE;
 }
 
 void print_version_message_and_exit() {
@@ -98,8 +145,8 @@ void print_help_message_and_exit() {
     "\n    - readsToContigs.paf - overlaps between reads and contigs"
     "\n    - readsToReads.paf - overlaps between reads"
     "\n    - contigs.fasta - contigs in FASTA format"
-	"\nIf Reads file, Contigs file or Overlaps are specified,"
-	"\nthey will not be looked for in the Input folder!"
+    "\nIf Reads file, Contigs file or Overlaps are specified,"
+	  "\nthey will not be looked for in the Input folder!"
     "\nOptions:"
     "\n-f (--folder)     specify input folder for ScaRa"
     "\n-r (--reads)      specify reads file for ScaRa"
@@ -107,6 +154,10 @@ void print_help_message_and_exit() {
     "\n-o (--overlapsRC)   specify contig-read overlaps file for ScaRa"
     "\n-s (--overlapsRR)   specify read self overlaps file for ScaRa"
     "\n-m (--multithreading)   use multithreading"
+    "\n-D (--debug_level) [level] set a debugg level which determines "
+    "\n 					the amount of output the program generates to stderr"
+    "\n 					level can be set to values 0 - 3, with 0 being the least"
+    "\n           and 3 being the most verbose"
     "\n-v (--version)    print program version"
     "\n-h (--help)       print this help message\n";
 
@@ -118,7 +169,7 @@ int main(int argc, char **argv)
 {
 
   // KK: Defining basic program nOptions
-  const char* const short_opts = "hvr:c:o:s:f:m";
+  const char* const short_opts = "hvr:c:o:s:f:mD:";
   const option long_opts[] = {
     {"help", no_argument, NULL, 'h'},
     {"version", no_argument, NULL, 'v'},
@@ -128,6 +179,7 @@ int main(int argc, char **argv)
     {"overlapsRC", required_argument, NULL, 'o'},
     {"overlapsRR", required_argument, NULL, 's'},
     {"multithreading", no_argument, NULL, 'm'},
+    {"debug_level", required_argument, NULL, 'D'},
     {NULL, no_argument, NULL, 0}
   };
 
@@ -149,10 +201,10 @@ int main(int argc, char **argv)
     case 'f':
       readsSet = contigsSet = RCOverlapsSet = RROverlapsSet = 1;
       strData = optarg;
-      strReadsFasta = strData + "reads.fastq";
-      strR2COvlPaf = strData + "readsToContigs.paf";
-      strR2ROvlPaf = strData + "readsToReads.paf";
-      strContigsFasta = strData + "contigs.fasta";
+      strReadsFasta = strData + "/reads.fastq";
+      strR2COvlPaf = strData + "/readsToContigs.paf";
+      strR2ROvlPaf = strData + "/readsToReads.paf";
+      strContigsFasta = strData + "/contigs.fasta";
       break;
     case 'r':
       readsSet = 1;
@@ -173,6 +225,9 @@ int main(int argc, char **argv)
     case 'm':
       scara::multithreading = 1;
       break;
+    case 'D':
+      scara::globalDebugLevel = debugLevelFromString(optarg);
+      break;
     }
 
   if (argc < 2 || readsSet == 0 || contigsSet == 0 || RCOverlapsSet == 0 || RROverlapsSet == 0) {
@@ -182,11 +237,16 @@ int main(int argc, char **argv)
 
   std::time_t start_time = std::time(nullptr);
   std::cerr << "\nSCARA: Starting ScaRa: " << std::asctime(std::localtime(&start_time)) << start_time << " seconds since the Epoch";
+  if (scara::globalDebugLevel == DL_DEBUG) print_mem_usage("Start");
 
   std::time_t current_time = std::time(nullptr);
   std::cerr << "\nSCARA: Finished loading: " << std::asctime(std::localtime(&current_time)) << (current_time - start_time) << " seconds since the start\n";
 
   scara::SBridger sbridger(strReadsFasta, strContigsFasta, strR2COvlPaf, strR2ROvlPaf);
+  if (scara::globalDebugLevel >= DL_VERBOSE) {
+    print_mem_usage("After initialization");
+    sbridger.printState();
+  }
 
   current_time = std::time(nullptr);
   std::cerr << "\nSCARA: Finished initializing bridger: " << std::asctime(std::localtime(&current_time)) << (current_time - start_time) << " seconds since the start\n";
@@ -201,6 +261,10 @@ int main(int argc, char **argv)
 
   sbridger.cleanupGraph();
   sbridger.print();
+  if (scara::globalDebugLevel >= DL_VERBOSE) {
+    print_mem_usage("After graph generation");
+    sbridger.printState();
+  }
 
   current_time = std::time(nullptr);
   std::cerr << "\nSCARA: Finished cleaning up the graph: " << std::asctime(std::localtime(&current_time)) << (current_time - start_time) << " seconds since the start\n";
@@ -208,6 +272,10 @@ int main(int argc, char **argv)
 
   int numPaths = sbridger.generatePaths();
 
+  if (scara::globalDebugLevel >= DL_VERBOSE) {
+    print_mem_usage("After path generation");
+    sbridger.printState();
+  }
   current_time = std::time(nullptr);
   std::cerr << "\nSCARA: Finished generating paths: " << std::asctime(std::localtime(&current_time)) << (current_time - start_time) << " seconds since the start\n";
   std::cerr << "\nSCARA: Paths generated: " << numPaths;
@@ -219,8 +287,11 @@ int main(int argc, char **argv)
 
   int numGroups = sbridger.groupAndProcessPaths();
 
+  if (scara::globalDebugLevel >= DL_VERBOSE) {
+    print_mem_usage("After path grouping");
+    sbridger.printState();
+  }
   current_time = std::time(nullptr);
-
   std::cerr << "\nSCARA: Finished grouping and processing paths: " << std::asctime(std::localtime(&current_time)) << (current_time - start_time) << " seconds since the start\n";
   std::cerr << "\nSCARA: Final number of path groups: " << numGroups;
   std::cerr << "\nSCARA: Generating sequences:";
@@ -231,6 +302,10 @@ int main(int argc, char **argv)
   std::cerr << "\nSCARA: Finished generating sequences: " << std::asctime(std::localtime(&current_time)) << (current_time - start_time) << " seconds since the start\n";
   std::cerr << "\nSCARA: Final number of sequences generated: " << numSeq;
 
+  if (scara::globalDebugLevel >= DL_VERBOSE) {
+    print_mem_usage("After sequence generation");
+    sbridger.printState();
+  }
   current_time = std::time(nullptr);
   std::cerr << "\nSCARA: Finished ScaRa run: " << std::asctime(std::localtime(&current_time)) << (current_time - start_time) << " seconds since the start\n";
 

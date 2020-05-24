@@ -47,7 +47,7 @@ namespace scara {
 		int bGraphCreated;
 		MapIdToNode mAnchorNodes;
 		MapIdToNode mReadNodes;
-		std::vector<shared_ptr<Edge>> vEdges;
+		// std::vector<shared_ptr<Edge>> vEdges;
 
 		SBridger(const string& strReadsFasta, const string& strContigsFasta, const string& strR2Cpaf, const string& strR2Rpaf);
 
@@ -73,6 +73,8 @@ namespace scara {
 
 	  	void Execute(void);
 
+	  	void printState();
+
 	private:
 		shared_ptr<PathInfo> getBestPath_AvgSI();
 
@@ -80,7 +82,7 @@ namespace scara {
 		void printNodeToStream(MapIdToNode &map, ofstream& outStream);
 
 		bool scaffoldsEqual(shared_ptr<std::vector<shared_ptr<PathGroup>>> scaff1, shared_ptr<std::vector<shared_ptr<PathGroup>>> scaff2);
-		int compareScaffolds(shared_ptr<std::vector<shared_ptr<PathGroup>>> scaff1, shared_ptr<std::vector<shared_ptr<PathGroup>>> scaff2);
+		// int compareScaffolds(shared_ptr<std::vector<shared_ptr<PathGroup>>> scaff1, shared_ptr<std::vector<shared_ptr<PathGroup>>> scaff2);
 	};
 
 }

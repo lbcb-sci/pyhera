@@ -707,10 +707,11 @@ namespace scara {
 
   void SBridger::printNodeToStream(MapIdToNode &map, ofstream &outStream) {
   	for (auto const& it : map) {
-  		outStream << "Edges for node " << it.first << ":" << endl;
   		auto node_ptr = it.second;
+  		if (node_ptr->vOutEdges.size() == 0) continue;		// Do not print nodes without outgoing edges
+  		outStream << "Edges for node " << it.first << ":" << endl;
   		for (auto const& edge_ptr : node_ptr->vOutEdges) {
-  			outStream << "(" << edge_ptr->getStartNodeName() << "," << edge_ptr->getEndNodeName() << ") ";
+  			outStream << "(" << edge_ptr->getStartNodeName() << "," << edge_ptr->getEndNodeName() << ") " << endl;
   		}
   		outStream << endl;
   	}
@@ -726,6 +727,7 @@ namespace scara {
   	if (scaff1->size() == 0 && scaff2->size() == 0) {
   		throw std::runtime_error(std::string("SCARA BRIDGER: ERROR - Scaffolds of size 0"));
   	}
+  	uint32_t size = scaff1->size();
   	for (uint32_t i=0; i<size; i++) {
   		std::string sname1 = (*scaff1)[i]->startNodeName;
   		std::string ename1 = (*scaff1)[i]->endNodeName;

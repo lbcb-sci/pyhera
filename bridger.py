@@ -634,12 +634,19 @@ def getPaths_maxovl(anchornodes, readnodes, crovledges, rrovledges, output=True)
                 redge = stack.pop()                             # Pop an edge from the stack
                 rnode = redge.endNode                           # And the corresponding node
 
+                direction2 = directionLEFT
+                if redge.ESright > redge.ESleft:
+                    direction2 = directionRIGHT
                 # Check if the node from the stack can continue the current path
-                if (len(path) > 0) and (path[-1].endNode != redge.startNode):
+                if (len(path) > 0) and ((path[-1].endNode != redge.startNode) or (direction != direction2)):
                     # If not, put the edge back on the stack
                     stack.append(redge)
                     # And remove the last edge from the path
-                    path.pop()
+                    # If the removed edge represents an overlap of reads from different strands
+                    # reverse the direction of extension
+                    popedge = path.pop()
+                    if popedge.Strand == '-':
+                        direction = reverseDirection(direction)
                     # Skip to next iteration
                     continue
 
@@ -651,7 +658,7 @@ def getPaths_maxovl(anchornodes, readnodes, crovledges, rrovledges, output=True)
                 path.append(redge)                              # Add edge to the path
                 
                 if redge.Strand == '-':                         # If edge represents an overlap of reads from different strands
-                    direction = reverseDirection(direction)      # then reverse the direction of extension
+                    direction = reverseDirection(direction)     # then reverse the direction of extension
                 
                 reads_traversed[rnode.name] = 1                 # And mark the node as traversed
 
@@ -698,6 +705,10 @@ def getPaths_maxovl(anchornodes, readnodes, crovledges, rrovledges, output=True)
                 else:                                                       # Graph traversal has come to a dead end
                     try:
                         edge2 = path.pop()                                      # Remove the last edge from the path
+                        # If the removed edge represents an overlap of reads from different strands
+                        # reverse the direction of extension
+                        if edge2.Strand == '-':
+                            direction = reverseDirection(direction)                
                         del reads_traversed[rnode.name]                         # Remove current read node from the list of traversed ones
                     except:
                         import pdb
@@ -747,12 +758,19 @@ def getPaths_maxext(anchornodes, readnodes, crovledges, rrovledges, output=True)
                 redge = stack.pop()                             # Pop an edge from the stack
                 rnode = redge.endNode                           # And the corresponding node
 
+                direction2 = directionLEFT
+                if redge.ESright > redge.ESleft:
+                    direction2 = directionRIGHT
                 # Check if the node from the stack can continue the current path
-                if (len(path) > 0) and (path[-1].endNode != redge.startNode):
+                if (len(path) > 0) and ((path[-1].endNode != redge.startNode) or (direction != direction2)):
                     # If not, put the edge back on the stack
                     stack.append(redge)
                     # And remove the last edge from the path
-                    path.pop()
+                    # If the removed edge represents an overlap of reads from different strands
+                    # reverse the direction of extension
+                    popedge = path.pop()
+                    if popedge.Strand == '-':
+                        direction = reverseDirection(direction)
                     # Skip to next iteration
                     continue
 
@@ -763,6 +781,9 @@ def getPaths_maxext(anchornodes, readnodes, crovledges, rrovledges, output=True)
 
                 path.append(redge)                              # Add edge to the path
                 reads_traversed[rnode.name] = 1                 # And mark the node as traversed
+
+                if redge.Strand == '-':                         # If edge represents an overlap of reads from different strands
+                    direction = reverseDirection(direction)     # then reverse the direction of extension
 
                 Aedges = []                                     # Edges to anchor nodes
                 Redges = []                                     # Edges to read nodes
@@ -806,6 +827,10 @@ def getPaths_maxext(anchornodes, readnodes, crovledges, rrovledges, output=True)
                     try:
                         edge2 = path.pop()                                      # Remove the last edge from the path
                         del reads_traversed[rnode.name]                         # Remove current read node from the list of traversed ones
+                        # If the removed edge represents an overlap of reads from different strands
+                        # reverse the direction of extension
+                        if edge2.Strand == '-':
+                            direction = reverseDirection(direction)
                     except:
                         import pdb
                         pdb.set_trace()
@@ -891,12 +916,19 @@ def getPaths_MC(anchornodes, readnodes, crovledges, rrovledges, numpaths, output
             redge = stack.pop()                             # Pop an edge from the stack
             rnode = redge.endNode                           # And the corresponding node
 
+            direction2 = directionLEFT
+            if redge.ESright > redge.ESleft:
+                direction2 = directionRIGHT
             # Check if the node from the stack can continue the current path
-            if (len(path) > 0) and (path[-1].endNode != redge.startNode):
+            if (len(path) > 0) and ((path[-1].endNode != redge.startNode) or (direction != direction2)):
                 # If not, put the edge back on the stack
                 stack.append(redge)
                 # And remove the last edge from the path
-                path.pop()
+                # If the removed edge represents an overlap of reads from different strands
+                # reverse the direction of extension
+                popedge = path.pop()
+                if popedge.Strand == '-':
+                    direction = reverseDirection(direction)
                 # Skip to next iteration
                 continue
 
@@ -907,6 +939,9 @@ def getPaths_MC(anchornodes, readnodes, crovledges, rrovledges, numpaths, output
 
             path.append(redge)                              # Add edge to the path
             reads_traversed[rnode.name] = 1                 # And mark the node as traversed
+
+            if redge.Strand == '-':                         # If edge represents an overlap of reads from different strands
+                direction = reverseDirection(direction)     # then reverse the direction of extension
 
             Aedges = []                                     # Edges to anchor nodes
             Redges = []                                     # Edges to read nodes
@@ -928,7 +963,10 @@ def getPaths_MC(anchornodes, readnodes, crovledges, rrovledges, numpaths, output
                     if endNode.name != aname:               # We only want nodes that are different from the starting node!
                         Aedges.append(edge2)                # NOTE: this might change, as we migh want scaffold circulat genomes!
                 elif endNode.nodetype == Node.READ:
-                    Redges.append(edge2)
+                    # Put in only edes that extend in the appropriate direction
+                    if (direction == directionLEFT and edge2.ESleft > edge2.ESright) or \
+                       (direction == directionRIGHT and edge2.ESright > edge2.ESleft):
+                        Redges.append(edge2)
 
             if Aedges:                                                  # If anchor nodes have been reached find the best one
                 if direction == directionLEFT:                          # by sorting them according to ES and taking the first one
@@ -967,6 +1005,10 @@ def getPaths_MC(anchornodes, readnodes, crovledges, rrovledges, numpaths, output
                 try:
                     edge2 = path.pop()                                      # Remove the last edge from the path
                     del reads_traversed[rnode.name]                         # Remove current read node from the list of traversed ones
+                    # If the removed edge represents an overlap of reads from different strands
+                    # reverse the direction of extension
+                    if edge2.Strand == '-':
+                        direction = reverseDirection(direction)
                 except:
                     import pdb
                     pdb.set_trace()
@@ -1382,7 +1424,7 @@ def generate_fasta_for_path(path, anchornodes, readnodes):
 
 
     # 1. Generate sequence for the first node and determine the used part for the next iteration
-    # If relative strand for the edge is '-' switch global relative strand and reverse expected direcion
+    # If relative strand for the edge is '-' switch global relative strand and reverse expected direction
     if estrand == '-':
         rstrand = '+' if rstrand == '-' else '-'
         curDirection = reverseDirection(curDirection)
@@ -1707,37 +1749,42 @@ def generate_fasta(final_paths, anchornodes, readnodes, filename = None):
                     # Extending path1 with path2
                     # pathinfo: (sname, ename, length, numNodes, direction, pathstrand, SIavg, path)
                     # At this point length and numNodes are irelevant
-                    if ename1 == sname2:
-                        if (pathstrand1 == '+' and direction1 == direction2) or \
-                           (pathstrand1 == '-' and direction1 != direction2):
+                    try:
+                        if ename1 == sname2:
+                            if (pathstrand1 == '+' and direction1 == direction2) or \
+                               (pathstrand1 == '-' and direction1 != direction2):
+                                new_pathstrand = '+' if pathstrand1 == pathstrand2 else '-'
+                                combined_path = path1 + path2
+                                new_pinfo = [sname1, ename2, 0, 0, direction1, new_pathstrand, 1.0, combined_path, anodes1 + [ename2]]
+                                join = True
+
+                        # Extending path2 with path1
+                        elif ename2 == sname1:
+                            if (pathstrand2 == '+' and direction2 == direction1) or \
+                               (pathstrand2 == '-' and direction2 != direction1):
+                                new_pathstrand = '+' if pathstrand1 == pathstrand2 else '-'
+                                combined_path = path2 + path1
+                                new_pinfo = [sname2, ename1, 0, 0, direction2, new_pathstrand, 1.0, combined_path, anodes2 + [ename1]]
+                                join = True
+
+                        # Extending with reversing paths
+                        elif sname1 == sname2 and direction1 != direction2:
+                            rpath1 = reversed_path(path1)
                             new_pathstrand = '+' if pathstrand1 == pathstrand2 else '-'
-                            combined_path = path1 + path2
-                            new_pinfo = [sname1, ename2, 0, 0, direction1, new_pathstrand, 1.0, combined_path, anodes1 + [ename2]]
+                            combined_path = rpath1 + path2
+                            new_pinfo = [ename1, ename2, 0, 0, direction2, new_pathstrand, 1.0, combined_path, [ename1] + anodes2]
                             join = True
 
-                    # Extending path2 with path1
-                    if ename2 == sname1:
-                        if (pathstrand2 == '+' and direction2 == direction1) or \
-                           (pathstrand2 == '-' and direction2 != direction1):
+                        elif ename1 == ename2 and direction1 != direction2:
+                            rpath2 = reversed_path(path2)
                             new_pathstrand = '+' if pathstrand1 == pathstrand2 else '-'
-                            combined_path = path2 + path1
-                            new_pinfo = [sname2, ename1, 0, 0, direction2, new_pathstrand, 1.0, combined_path, anodes2 + [ename1]]
+                            combined_path = path1 + rpath2
+                            new_pinfo = [sname1, sname2, 0, 0, direction1, new_pathstrand, 1.0, combined_path, anodes1 + [sname2]]
                             join = True
-
-                    # Extending with reversing paths
-                    if sname1 == sname2 and direction1 != direction2:
-                        rpath1 = reversed_path(path1)
-                        new_pathstrand = '+' if pathstrand1 == pathstrand2 else '-'
-                        combinedpath = rpath1 + path2
-                        new_pinfo = [ename1, ename2, 0, 0, direction2, new_pathstrand, 1.0, combined_path, [ename1] + anodes2]
-                        join = True
-
-                    if ename1 == ename2 and direction1 != direction2:
-                        rpath2 = reversed_path(path2)
-                        new_pathstrand = '+' if pathstrand1 == pathstrand2 else '-'
-                        combined_path = path1 + rpath2
-                        new_pinfo = [sname1, sname2, 0, 0, direction1, new_pathstrand, 1.0, combined_path, anodes1 + [sname2]]
-                        join = True
+                    except:
+                        import pdb
+                        pdb.set_trace()
+                        pass
 
                     if join:        # Exit the first loop if the join was done
                         break

@@ -119,6 +119,27 @@ void setGlobalParameters() {
   scara::logFile = "scaraLog.txt";
 }
 
+void printGlobalParameters() {
+
+  std::cerr << "\nSCARA global parameters:";
+  std::cerr << "\nUsing multithreading: " << (scara::multithreading == 0?"NO":"YES");
+  std::cerr << "\nglobalDebugLevel: " << scara::globalDebugLevel;
+
+  std::cerr << "\nMinMCPaths: " << scara::MinMCPaths;
+  std::cerr << "\nHardNodeLimit: " << scara::HardNodeLimit;
+  std::cerr << "\nSoftNodeLimit: " << scara::SoftNodeLimit;
+  std::cerr << "\nNumDFSNodes: " << scara::NumDFSNodes;
+  std::cerr << "\nMaxMCIterations: " << scara::MaxMCIterations;
+  std::cerr << "\nMinPathsinGroup: " << scara::MinPathsinGroup;
+  std::cerr << "\nPathGroupHalfSize: " << scara::PathGroupHalfSize;
+
+  std::cerr << "\nSImin: " << scara::SImin;
+  std::cerr << "\nOHmax: " << scara::OHmax;
+
+  std::cerr << "\nLog file: " << scara::logFile;
+
+}
+
 DebugLevel debugLevelFromString(std::string str) {
 	if (str == "0") return DL_NONE;
 	else if (str == "1") return DL_INFO;
@@ -169,7 +190,12 @@ void print_help_message_and_exit() {
     "\npMinPathsInGroup - a minimum number of paths in a path group (default 3)"
     "\npPathGroupHalfSize - a size of a bucket in which paths are grouped"
     "\n                     according to their length (default 5000)"
+    "\npSImin - set a minimum sequence identity, overlaps with lower SI will be"
+    "\n                                          discarded (defualt 0.60)"
+    "\npOHmax - set a maximum average overhangm overlap with higher average overhang"
+    "\n                                          will be discarded (defualt 0.25)"
     "\n________________________________________________________________________"
+    "\n"
     "\n-v (--version)    print program version"
     "\n-h (--help)       print this help message\n";
 
@@ -180,25 +206,27 @@ void print_help_message_and_exit() {
 int main(int argc, char **argv)
 {
 
-  // KK: Defining basic program nOptions
-  int pMinMCPaths, pMaxMCIterations, pHardNodeLimit, pNumDFSNodes, pMinPathsInGroup, pPathGroupHalfSize;
+  // KK: Defining basic program options
   const char* const short_opts = "hvr:c:o:s:f:mD:";
   const option long_opts[] = {
-    {"help", no_argument, NULL, 'h'},
-    {"version", no_argument, NULL, 'v'},
-    {"folder", required_argument, NULL, 'f'},
-    {"reads", required_argument, NULL, 'r'},
-    {"contigs", required_argument, NULL, 'c'},
-    {"overlapsRC", required_argument, NULL, 'o'},
-    {"overlapsRR", required_argument, NULL, 's'},
-    {"multithreading", no_argument, NULL, 'm'},
-    {"debug_level", required_argument, NULL, 'D'},
-    {"pMinMCPaths", required_argument, &pMinMCPaths, 0},
-    {"pMAXMCIterations", required_argument, &pMaxMCIterations, 0},
-    {"pHardNodeLimit", required_argument, &pHardNodeLimit, 0},
-    {"pNumDFSNodes", required_argument, &pNumDFSNodes, 0},
-    {"pMinPathsInGroup", required_argument, &pMinPathsInGroup, 0},
-    {"pPathGroupHalfSize", required_argument, &pPathGroupHalfSize, 0},
+    {"help", no_argument, NULL, 'h'},                   // option_index = 0
+    {"version", no_argument, NULL, 'v'},                // option_index = 1
+    {"folder", required_argument, NULL, 'f'},           // option_index = 2
+    {"reads", required_argument, NULL, 'r'},            // option_index = 3
+    {"contigs", required_argument, NULL, 'c'},          // option_index = 4
+    {"overlapsRC", required_argument, NULL, 'o'},       // option_index = 5
+    {"overlapsRR", required_argument, NULL, 's'},       // option_index = 6
+    {"multithreading", no_argument, NULL, 'm'},         // option_index = 7
+    {"debug_level", required_argument, NULL, 'D'},      // option_index = 8
+    {"pMinMCPaths", required_argument, NULL, 0},        // option_index = 9
+    {"pMAXMCIterations", required_argument, NULL, 0},   // option_index = 10
+    {"pHardNodeLimit", required_argument, NULL, 0},     // option_index = 11
+    {"pNumDFSNodes", required_argument, NULL, 0},       // option_index = 12
+    {"pMinPathsInGroup", required_argument, NULL, 0},   // option_index = 13
+    {"pPathGroupHalfSize", required_argument, NULL, 0}, // option_index = 14
+    {"pPathGroupHalfSize", required_argument, NULL, 0}, // option_index = 15
+    {"pSImin", required_argument, NULL, 0},             // option_index = 16
+    {"pOHmax", required_argument, NULL, 0},             // option_index = 17
     {NULL, no_argument, NULL, 0}
   };
 
@@ -208,8 +236,8 @@ int main(int argc, char **argv)
 
   setGlobalParameters();
 
-  int opt;
-  while ((opt = getopt_long(argc, argv, short_opts, long_opts, NULL)) != -1)
+  int opt, option_index;
+  while ((opt = getopt_long(argc, argv, short_opts, long_opts, &option_index)) != -1)
     switch(opt) {
     case 'h':
       print_help_message_and_exit();
@@ -248,12 +276,15 @@ int main(int argc, char **argv)
       scara::globalDebugLevel = debugLevelFromString(optarg);
       break;
     case 0:
-      if (pMinMCPaths) scara::MinMCPaths = stoi(optarg);
-      if (pMaxMCIterations) scara::MaxMCIterations = stoi(optarg);
-      if (pHardNodeLimit) scara::HardNodeLimit = stoi(optarg);
-      if (pNumDFSNodes) scara::NumDFSNodes = stoi(optarg);
-      if (pMinPathsInGroup) scara::MinPathsinGroup = stoi(optarg);
-      if (pPathGroupHalfSize) scara::PathGroupHalfSize = stoi(optarg);
+      if (option_index == 9)  scara::MinMCPaths = stoi(optarg);
+      if (option_index == 10) scara::MaxMCIterations = stoi(optarg);
+      if (option_index == 11) scara::HardNodeLimit = stoi(optarg);
+      if (option_index == 12) scara::NumDFSNodes = stoi(optarg);
+      if (option_index == 13) scara::MinPathsinGroup = stoi(optarg);
+      if (option_index == 14) scara::PathGroupHalfSize = stoi(optarg);
+      if (option_index == 15) scara::PathGroupHalfSize = stoi(optarg);
+      if (option_index == 16) scara::SImin = stof(optarg);
+      if (option_index == 17) scara::OHmax = stof(optarg);
       break;
     default:
       print_help_message_and_exit();
@@ -264,6 +295,8 @@ int main(int argc, char **argv)
      std::cerr << "\nNot all arguments specified!";
      print_help_message_and_exit();
   }
+
+  if (scara::globalDebugLevel >= DL_VERBOSE) printGlobalParameters();
 
   std::time_t start_time = std::time(nullptr);
   std::cerr << "\nSCARA: Starting ScaRa: " << std::asctime(std::localtime(&start_time)) << start_time << " seconds since the Epoch";
